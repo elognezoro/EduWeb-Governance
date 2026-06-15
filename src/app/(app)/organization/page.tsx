@@ -134,7 +134,7 @@ export default async function OrganizationPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       {org.type && <Badge tone="neutral">{org.type}</Badge>}
-                      {canManage && <FileUpload endpoint="/api/blob/org-logo" accept="image/*" label="Logo" variant="ghost" extraFields={{ orgId: org.id }} />}
+                      {canManage && <FileUpload purpose="logo" entityId={org.id} accept="image/*" label="Logo" variant="ghost" />}
                     </div>
                   </div>
 

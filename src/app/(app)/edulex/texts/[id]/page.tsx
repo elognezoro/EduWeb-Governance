@@ -199,7 +199,7 @@ export default async function LegalTextDetailPage({
                   <p className="text-sm text-slate-400">Aucun document source téléversé.</p>
                 )}
                 {canEditDoc && (
-                  <FileUpload endpoint={`/api/blob/edulex/${text.id}`} accept="application/pdf,image/*" label="Téléverser un document source (PDF)" />
+                  <FileUpload purpose="edulex" entityId={text.id} accept="application/pdf,image/*" label="Téléverser un document source (PDF)" />
                 )}
               </CardContent>
             </Card>

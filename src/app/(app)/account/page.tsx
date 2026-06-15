@@ -43,7 +43,7 @@ export default async function AccountPage() {
               ))}
             </div>
           </div>
-          <FileUpload endpoint="/api/blob/avatar" accept="image/*" label="Changer la photo" />
+          <FileUpload purpose="avatar" accept="image/*" label="Changer la photo" />
         </CardContent>
       </Card>
 

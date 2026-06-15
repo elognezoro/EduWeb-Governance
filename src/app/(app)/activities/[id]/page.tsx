@@ -137,7 +137,7 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
                   <p className="text-sm text-slate-400">Aucune pièce jointe.</p>
                 )}
                 {canAttach && (
-                  <FileUpload endpoint={`/api/blob/activity/${activity.id}`} accept="application/pdf,image/*,.doc,.docx,.xls,.xlsx" label="Joindre un document" />
+                  <FileUpload purpose="activity" entityId={activity.id} accept="application/pdf,image/*,.doc,.docx,.xls,.xlsx" label="Joindre un document" />
                 )}
               </CardContent>
             </Card>
