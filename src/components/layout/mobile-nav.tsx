@@ -10,6 +10,13 @@ import { NavLinks } from "./nav-links";
 export function MobileNav() {
   const [open, setOpen] = useState(false);
 
+  // Ouverture depuis ailleurs (barre d'onglets mobile « Plus »).
+  useEffect(() => {
+    const openNav = () => setOpen(true);
+    window.addEventListener("eduweb:open-nav", openNav);
+    return () => window.removeEventListener("eduweb:open-nav", openNav);
+  }, []);
+
   // Verrouille le défilement de fond + fermeture à la touche Échap.
   useEffect(() => {
     if (!open) return;

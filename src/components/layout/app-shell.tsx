@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
+import { MobileTabBar } from "./mobile-tabbar";
 import type { CountryOption, SubdivisionOption } from "./geo-filter";
 
 export function AppShell({
@@ -32,10 +33,12 @@ export function AppShell({
           currentSubdivision={currentSubdivision}
           unreadCount={unreadCount}
         />
-        <main className="flex-1 px-4 py-6 lg:px-8 lg:py-8">
+        <main className="flex-1 px-4 py-6 pb-28 lg:px-8 lg:py-8 lg:pb-8">
           <div className="mx-auto max-w-7xl animate-fade-in">{children}</div>
         </main>
       </div>
+      {/* Barre d'onglets mobile (sous lg) */}
+      <MobileTabBar />
     </div>
   );
 }

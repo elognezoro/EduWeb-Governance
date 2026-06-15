@@ -111,7 +111,7 @@ export function FloatingToc() {
   // Portail vers <body> : échappe à tout ancêtre transformé/filtré (animate-fade-in,
   // backdrop, drawer) qui ferait perdre l'ancrage « fixed » au viewport.
   return createPortal(
-    <div ref={rootRef} className="fixed bottom-4 left-3 z-40">
+    <div ref={rootRef} className="fixed bottom-[5.5rem] left-3 z-40 lg:bottom-4">
       {/* Panneau du sommaire — ouvert au-dessus du bouton */}
       {open && (
         <nav

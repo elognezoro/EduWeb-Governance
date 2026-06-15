@@ -59,7 +59,7 @@ export function AcademyPromo() {
       role="complementary"
       aria-label="EduLex Academy"
       className={cn(
-        "fixed bottom-4 left-4 z-40 w-72 max-w-[calc(100vw-2rem)] transition-all duration-500 ease-out",
+        "fixed bottom-[5.5rem] left-4 z-40 w-72 max-w-[calc(100vw-2rem)] transition-all duration-500 ease-out lg:bottom-4",
         visible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0"
       )}
     >
