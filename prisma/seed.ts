@@ -12,6 +12,7 @@ import {
   PERMISSION_ACTIONS,
 } from "../src/lib/enums";
 import { seedCorpus } from "./seed-corpus";
+import { seedOrg } from "./seed-org";
 
 const prisma = new PrismaClient();
 
@@ -82,6 +83,7 @@ async function clean() {
   await prisma.structure.deleteMany();
   await prisma.region.deleteMany();
   await prisma.ministry.deleteMany();
+  await prisma.government.deleteMany();
   await prisma.sector.deleteMany();
   await prisma.organization.deleteMany();
   await prisma.permission.deleteMany();
@@ -519,6 +521,9 @@ async function main() {
 
   // Corpus officiel EduLex CI (textes validés) + évaluations 5 niveaux — reproductible en production.
   await seedCorpus(prisma);
+
+  // Config institutionnelle : gouvernement daté, ministères, hiérarchie de validation.
+  await seedOrg(prisma);
 
   console.log("✅ Seed terminé.");
   console.log("   Comptes : admin@eduweb.ci · agent@eduweb.ci · juriste@eduweb.ci · directeur@eduweb.ci · apprenant@eduweb.ci");

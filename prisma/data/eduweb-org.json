@@ -1,0 +1,202 @@
+{
+  "country": "CI",
+  "government": {
+    "name": "Gouvernement de Côte d'Ivoire",
+    "effectiveDate": "2026-06-14T00:00:00.000Z",
+    "endDate": null,
+    "sourceUrl": null
+  },
+  "ministries": [
+    {
+      "name": "Primature / Premier ministre, chef du gouvernement",
+      "code": "PM",
+      "order": 1,
+      "sectorCode": null
+    },
+    {
+      "name": "Vice-Primature, ministère de la Défense",
+      "code": "MD",
+      "order": 2,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère de la Fonction publique et de la Modernisation de l'Administration",
+      "code": "MFPMA",
+      "order": 3,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère des Affaires étrangères et de la Coopération internationale",
+      "code": "MAECI",
+      "order": 4,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère de la Justice et des Droits de l'Homme",
+      "code": "MJDH",
+      "order": 5,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère de l'Intérieur et de la Sécurité",
+      "code": "MIS",
+      "order": 6,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère de l'Économie, des Finances et du Budget",
+      "code": "MEFB",
+      "order": 7,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère des Mines, du Pétrole et de l'Énergie",
+      "code": "MMPE",
+      "order": 8,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère de l'Agriculture, du Développement rural et des Productions vivrières",
+      "code": "MINADER",
+      "order": 9,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère des Transports et des Affaires maritimes",
+      "code": "MTAM",
+      "order": 10,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère de l'Hydraulique, de l'Assainissement et de la Salubrité",
+      "code": "MHAS",
+      "order": 11,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère de la Promotion de la Jeunesse, de l'Insertion professionnelle et du Service civique",
+      "code": "MPJIPSC",
+      "order": 12,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère de la Santé, de l'Hygiène publique et de la Couverture maladie universelle",
+      "code": "MSHPCMU",
+      "order": 13,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère de l'Urbanisme, du Logement et du Cadre de vie",
+      "code": "MULCV",
+      "order": 14,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère des Ressources animales et halieutiques",
+      "code": "MIRAH",
+      "order": 15,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère du Portefeuille de l'État et des Entreprises publiques",
+      "code": "MPEEP",
+      "order": 16,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère de la Communication",
+      "code": "MCOM",
+      "order": 17,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère des Eaux et Forêts",
+      "code": "MINEF",
+      "order": 18,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère du Commerce, de l'Industrie et de l'Artisanat",
+      "code": "MCIA",
+      "order": 19,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère du Tourisme et des Loisirs",
+      "code": "MTL",
+      "order": 20,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère du Plan et du Développement",
+      "code": "MPD",
+      "order": 21,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère de l'Enseignement supérieur et de la Recherche scientifique",
+      "code": "MESRS",
+      "order": 22,
+      "sectorCode": "SUP"
+    },
+    {
+      "name": "Ministère de l'Emploi, de la Protection sociale et de la Formation professionnelle",
+      "code": "MEPSFP",
+      "order": 23,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère de l'Éducation nationale, de l'Alphabétisation et de l'Enseignement technique",
+      "code": "MENA",
+      "order": 24,
+      "sectorCode": "EDU"
+    },
+    {
+      "name": "Ministère des Infrastructures et de l'Entretien routier",
+      "code": "MIER",
+      "order": 25,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère de la Cohésion nationale, de la Solidarité et de la Lutte contre la Pauvreté",
+      "code": "MCNSLP",
+      "order": 26,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère de la Transition numérique et de l'Innovation technologique",
+      "code": "MTNIT",
+      "order": 27,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère de la Femme, de la Famille et de l'Enfant",
+      "code": "MFFE",
+      "order": 28,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère de la Culture et de la Francophonie",
+      "code": "MCF",
+      "order": 29,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère des Sports",
+      "code": "MS",
+      "order": 30,
+      "sectorCode": null
+    },
+    {
+      "name": "Ministère de l'Environnement et de la Transition écologique",
+      "code": "METE",
+      "order": 31,
+      "sectorCode": null
+    }
+  ],
+  "validationHierarchy": [
+    "deputy_director",
+    "director",
+    "director_general"
+  ]
+}
