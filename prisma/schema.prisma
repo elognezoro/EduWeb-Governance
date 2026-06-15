@@ -1,0 +1,922 @@
+// ─────────────────────────────────────────────────────────────────────────────
+//  EduWeb Governance — Schéma de données Prisma
+//
+//  NB SQLite : pas d'`enum` ni de tableaux scalaires natifs. Les statuts, types
+//  et niveaux sont des `String` validés côté application (src/lib/enums.ts) ; les
+//  structures flexibles (réponses de formulaire, options de question…) sont du
+//  JSON sérialisé en `String`. Ce choix garantit une portabilité immédiate vers
+//  PostgreSQL (il suffira de changer le `provider`).
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  AUTHENTIFICATION & RBAC
+// ══════════════════════════════════════════════════════════════════════════════
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  phone        String?
+  avatarUrl    String?
+  locale       String    @default("fr")
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  structureId    String?
+  structure      Structure?    @relation("StructureMembers", fields: [structureId], references: [id])
+  countryId      String?
+  country        Country?      @relation(fields: [countryId], references: [id])
+  ministryId     String?
+  ministry       Ministry?     @relation(fields: [ministryId], references: [id])
+
+  managerId String?
+  manager   User?   @relation("UserHierarchy", fields: [managerId], references: [id])
+  reports   User[]  @relation("UserHierarchy")
+
+  // Parrainage / agent commercial : code promo personnel + filleuls inscrits via le lien.
+  referralCode String? @unique
+  referredById String?
+  referredBy   User?   @relation("UserReferrals", fields: [referredById], references: [id])
+  referrals    User[]  @relation("UserReferrals")
+
+  roles    UserRole[]
+  sessions Session[]
+
+  // Permissions déléguées directement (au-delà des rôles) — délégation « en un clic ».
+  directPermissions Permission[] @relation("UserDirectPermissions")
+
+  authoredActivities      Activity[]               @relation("ActivityAuthor")
+  validationActions       ValidationAction[]
+  managedStructures       Structure[]              @relation("StructureManager")
+  notifications           Notification[]
+  auditLogs               AuditLog[]
+  createdForms            ActivityForm[]           @relation("FormCreator")
+  generatedReports        Report[]                 @relation("ReportGenerator")
+  uploadedFiles           FileAsset[]              @relation("FileUploader")
+  depositedTexts          LegalText[]              @relation("TextDepositor")
+  validatedTexts          LegalText[]              @relation("TextValidator")
+  legalValidationActions  LegalValidationAction[]
+  questionAttempts        QuestionAttempt[]
+  xp                      UserXP?
+  progress                UserProgress[]
+  badges                  UserBadge[]
+  challengeAttempts       ChallengeAttempt[]
+  certificates            Certificate[]
+  reviewRecommendations   ReviewRecommendation[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([organizationId])
+  @@index([structureId])
+  @@index([countryId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress    String?
+  userAgent    String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  key         String   @unique // ex. "edulex.legal_validator"
+  name        String
+  description String?
+  scope       String   @default("GOVERNANCE") // GOVERNANCE | EDULEX | ACADEMY | SYSTEM
+  isSystem    Boolean  @default(false)
+
+  users       UserRole[]
+  permissions Permission[]
+
+  createdAt DateTime @default(now())
+}
+
+model Permission {
+  id          String  @id @default(cuid())
+  key         String  @unique // ex. "activity:validate"
+  module      String  // ex. "activity"
+  action      String  // create | read | update | delete | validate | publish | archive | export | import | manage
+  description String?
+
+  roles       Role[]
+  directUsers User[] @relation("UserDirectPermissions")
+}
+
+model UserRole {
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  // Portée optionnelle d'attribution (multi-tenant / multi-pays).
+  organizationId String?
+  countryId      String?
+
+  createdAt DateTime @default(now())
+
+  @@id([userId, roleId])
+  @@index([roleId])
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  GÉOGRAPHIE & ORGANISATION
+// ══════════════════════════════════════════════════════════════════════════════
+
+model Country {
+  id        String  @id @default(cuid())
+  code      String  @unique // ISO : CI, SN, BJ, CM, FR, GLOBAL
+  name      String
+  namespace String? // ex. "EduLex CI"
+  flag      String? // emoji drapeau
+  isActive  Boolean @default(true)
+  order     Int     @default(0)
+
+  regions       Region[]
+  organizations Organization[]
+  structures    Structure[]
+  ministries    Ministry[]
+  governments   Government[]
+  sectors       Sector[]
+  jurisdictions Jurisdiction[]
+  users         User[]
+  legalTexts    LegalText[]
+  activities    Activity[]
+  reports       Report[]
+  academyPaths  AcademyPath[]
+  questions     Question[]
+  challenges    Challenge[]
+
+  createdAt DateTime @default(now())
+}
+
+model Region {
+  id        String  @id @default(cuid())
+  name      String
+  code      String?
+  countryId String
+  country   Country @relation(fields: [countryId], references: [id])
+
+  structures Structure[]
+
+  @@index([countryId])
+}
+
+model Organization {
+  id        String  @id @default(cuid())
+  name      String
+  slug      String  @unique
+  type      String? // MINISTRY | INSTITUTION | NETWORK | ASSOCIATION | COMPANY
+  logoUrl   String?
+  isActive  Boolean @default(true)
+
+  countryId String?
+  country   Country? @relation(fields: [countryId], references: [id])
+
+  structures Structure[]
+  users      User[]
+  forms      ActivityForm[]
+  activities Activity[]
+  workflows  Workflow[]
+  reports    Report[]
+
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+}
+
+model Structure {
+  id   String @id @default(cuid())
+  name String
+  type String // DIRECTION | SOUS_DIRECTION | SERVICE | ANTENNE | REGION | COORDINATION | EQUIPE
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  parentId String?
+  parent   Structure?  @relation("StructureHierarchy", fields: [parentId], references: [id])
+  children Structure[] @relation("StructureHierarchy")
+
+  countryId String?
+  country   Country? @relation(fields: [countryId], references: [id])
+  regionId  String?
+  region    Region?  @relation(fields: [regionId], references: [id])
+
+  managerId String?
+  manager   User?   @relation("StructureManager", fields: [managerId], references: [id])
+
+  members    User[]     @relation("StructureMembers")
+  activities Activity[]
+  reports    Report[]
+
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  @@index([organizationId])
+  @@index([parentId])
+}
+
+model Ministry {
+  id        String  @id @default(cuid())
+  name      String
+  code      String? // ex. MENA, MESRS
+  order     Int     @default(0) // ordre protocolaire
+  countryId String
+  country   Country @relation(fields: [countryId], references: [id])
+
+  // Rattachement à un gouvernement daté (versionnement). Null = hors gouvernement.
+  governmentId String?
+  government   Government? @relation(fields: [governmentId], references: [id])
+
+  sectorId String?
+  sector   Sector? @relation(fields: [sectorId], references: [id])
+
+  users      User[]
+  legalTexts LegalText[]
+
+  @@index([countryId])
+  @@index([governmentId])
+}
+
+// Gouvernement (cabinet) d'un pays, daté. Le « gouvernement en vigueur » est
+// celui dont la date d'entrée en vigueur est passée et la plus récente.
+model Government {
+  id            String    @id @default(cuid())
+  countryId     String
+  country       Country   @relation(fields: [countryId], references: [id])
+  name          String                 // ex. « Gouvernement Beugré Mambé »
+  effectiveDate DateTime               // date d'entrée en vigueur
+  endDate       DateTime?              // renseignée quand un suivant entre en vigueur
+  sourceUrl     String?
+  ministries    Ministry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([countryId])
+}
+
+model Sector {
+  id        String  @id @default(cuid())
+  name      String
+  code      String?
+  countryId String?
+  country   Country? @relation(fields: [countryId], references: [id])
+
+  parentId String?
+  parent   Sector?  @relation("SectorHierarchy", fields: [parentId], references: [id])
+  children Sector[] @relation("SectorHierarchy")
+
+  ministries    Ministry[]
+  legalTexts    LegalText[]
+  subLegalTexts LegalText[] @relation("TextSubSector")
+  questions     Question[]
+
+  @@index([countryId])
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  FORMULAIRES & ACTIVITÉS
+// ══════════════════════════════════════════════════════════════════════════════
+
+model ActivityForm {
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+  version     Int     @default(1)
+  status      String  @default("DRAFT") // DRAFT | PUBLISHED | ARCHIVED
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  createdById String?
+  createdBy   User?   @relation("FormCreator", fields: [createdById], references: [id])
+
+  fields     ActivityFormField[]
+  activities Activity[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model ActivityFormField {
+  id       String  @id @default(cuid())
+  formId   String
+  form     ActivityForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  label    String
+  fieldKey String
+  // TEXT | TEXTAREA | DATE | NUMBER | SELECT | CHECKBOX | RADIO | FILE | IMAGE |
+  // TABLE | CALCULATED | EDULEX_LINK
+  type     String
+  required Boolean @default(false)
+  order    Int     @default(0)
+  config   String? // JSON : options, formule, contraintes…
+
+  @@index([formId])
+}
+
+model Activity {
+  id     String @id @default(cuid())
+  title  String
+  formId String?
+  form   ActivityForm? @relation(fields: [formId], references: [id])
+
+  authorId String
+  author   User   @relation("ActivityAuthor", fields: [authorId], references: [id])
+
+  structureId    String?
+  structure      Structure?    @relation(fields: [structureId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  countryId      String?
+  country        Country?      @relation(fields: [countryId], references: [id])
+
+  // DRAFT | SUBMITTED | IN_REVIEW | VALIDATED | REJECTED | TO_CORRECT |
+  // CONSOLIDATED | ARCHIVED
+  status      String   @default("DRAFT")
+  // Étape courante dans la hiérarchie de validation (0 = en attente du 1er niveau).
+  validationLevel Int   @default(0)
+  data        String?  // JSON : réponses du formulaire
+  periodStart DateTime?
+  periodEnd   DateTime?
+  submittedAt DateTime?
+
+  legalTexts        LegalText[]        @relation("ActivityLegalTexts")
+  validationActions ValidationAction[]
+  attachments       ActivityAttachment[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([authorId])
+  @@index([status])
+  @@index([countryId])
+}
+
+model ActivityAttachment {
+  id          String   @id @default(cuid())
+  activityId  String
+  activity    Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  fileAssetId String
+  fileAsset   FileAsset @relation(fields: [fileAssetId], references: [id])
+
+  @@index([activityId])
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  VALIDATION HIÉRARCHIQUE
+// ══════════════════════════════════════════════════════════════════════════════
+
+model Workflow {
+  id             String  @id @default(cuid())
+  name           String
+  description    String?
+  isActive       Boolean @default(true)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  steps WorkflowStep[]
+
+  createdAt DateTime @default(now())
+}
+
+model WorkflowStep {
+  id         String @id @default(cuid())
+  workflowId String
+  workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  order      Int
+  name       String
+  roleKey    String? // rôle habilité à valider cette étape
+
+  @@index([workflowId])
+}
+
+model ValidationAction {
+  id         String   @id @default(cuid())
+  activityId String
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  actorId    String
+  actor      User     @relation(fields: [actorId], references: [id])
+
+  // SUBMIT | VALIDATE | REJECT | REQUEST_CORRECTION | CONSOLIDATE | ARCHIVE
+  decision   String
+  comment    String?
+  fromStatus String?
+  toStatus   String?
+  ipAddress  String?
+
+  createdAt DateTime @default(now())
+
+  @@index([activityId])
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  REPORTING
+// ══════════════════════════════════════════════════════════════════════════════
+
+model ReportTemplate {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  sections    String? // JSON : plan type du rapport
+
+  reports Report[]
+
+  createdAt DateTime @default(now())
+}
+
+model Report {
+  id         String  @id @default(cuid())
+  title      String
+  templateId String?
+  template   ReportTemplate? @relation(fields: [templateId], references: [id])
+
+  period  String? // WEEKLY | MONTHLY | QUARTERLY | SEMESTRIAL | ANNUAL | CUSTOM
+  status  String  @default("DRAFT") // DRAFT | GENERATED | ARCHIVED
+  content String? // JSON : contenu consolidé figé
+
+  countryId      String?
+  country        Country?      @relation(fields: [countryId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  structureId    String?
+  structure      Structure?    @relation(fields: [structureId], references: [id])
+
+  generatedById String?
+  generatedBy   User?   @relation("ReportGenerator", fields: [generatedById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([countryId])
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  NOTIFICATIONS · FICHIERS · AUDIT
+// ══════════════════════════════════════════════════════════════════════════════
+
+model Notification {
+  id     String  @id @default(cuid())
+  userId String
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type   String  // DEADLINE | SUBMITTED | VALIDATED | REJECTED | REPORT_READY | TEXT_PUBLISHED | ACADEMY | …
+  title  String
+  body   String?
+  link   String?
+  isRead Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+model FileAsset {
+  id           String  @id @default(cuid())
+  filename     String
+  mimeType     String
+  size         Int
+  url          String
+  uploadedById String?
+  uploadedBy   User?   @relation("FileUploader", fields: [uploadedById], references: [id])
+
+  activityAttachments ActivityAttachment[]
+  legalAttachments    LegalTextAttachment[]
+
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id         String  @id @default(cuid())
+  userId     String?
+  user       User?   @relation(fields: [userId], references: [id])
+  action     String
+  module     String
+  entityType String?
+  entityId   String?
+  metadata   String? // JSON
+  ipAddress  String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([module])
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  EduLex — RÉFÉRENTIEL RÉGLEMENTAIRE INTERNATIONAL
+// ══════════════════════════════════════════════════════════════════════════════
+
+model Jurisdiction {
+  id        String  @id @default(cuid())
+  name      String
+  code      String?
+  countryId String
+  country   Country @relation(fields: [countryId], references: [id])
+
+  legalTexts LegalText[]
+
+  @@index([countryId])
+}
+
+model LegalTextCategory {
+  id       String  @id @default(cuid())
+  name     String
+  key      String? @unique
+  parentId String?
+  parent   LegalTextCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children LegalTextCategory[] @relation("CategoryHierarchy")
+
+  legalTexts LegalText[]
+}
+
+model LegalText {
+  id    String @id @default(cuid())
+  code  String @unique // ex. CI-PR-CST-CONST-2016-001-V3
+  title String
+  officialNumber String?
+
+  countryId      String
+  country        Country       @relation(fields: [countryId], references: [id])
+  jurisdictionId String?
+  jurisdiction   Jurisdiction? @relation(fields: [jurisdictionId], references: [id])
+  ministryId     String?
+  ministry       Ministry?     @relation(fields: [ministryId], references: [id])
+  sectorId       String?
+  sector         Sector?       @relation(fields: [sectorId], references: [id])
+  subSectorId    String?
+  subSector      Sector?       @relation("TextSubSector", fields: [subSectorId], references: [id])
+  categoryId     String?
+  category       LegalTextCategory? @relation(fields: [categoryId], references: [id])
+
+  type String // CONST | LOI | ORD | DEC | ARR | CIRC | REC | …
+  // En vigueur | Abrogé | Modifié | Remplacé | Suspendu | En attente |
+  // À vérifier | Archivé | Brouillon | Importé non vérifié
+  status String @default("DRAFT")
+  // V0 | V1 | V2 | V3 | V4
+  verificationLevel String @default("V0")
+  language          String @default("fr")
+  confidentiality   String @default("PUBLIC") // PUBLIC | RESTRICTED | CONFIDENTIAL
+
+  signatureDate   DateTime?
+  publicationDate DateTime?
+  effectiveDate   DateTime?
+  summary         String?
+  sourceUrl       String?
+
+  currentVersion Int @default(1)
+
+  depositedById String?
+  depositedBy   User?   @relation("TextDepositor", fields: [depositedById], references: [id])
+  validatedById String?
+  validatedBy   User?   @relation("TextValidator", fields: [validatedById], references: [id])
+
+  versions         LegalTextVersion[]
+  relationsFrom    LegalTextRelation[]     @relation("RelationSource")
+  relationsTo      LegalTextRelation[]     @relation("RelationTarget")
+  tags             LegalTextTag[]
+  attachments      LegalTextAttachment[]
+  validationLog    LegalValidationAction[]
+  activities       Activity[]              @relation("ActivityLegalTexts")
+  questions        Question[]
+  reviewRecos      ReviewRecommendation[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([countryId])
+  @@index([status])
+  @@index([verificationLevel])
+  @@index([type])
+}
+
+model LegalTextVersion {
+  id          String  @id @default(cuid())
+  legalTextId String
+  legalText   LegalText @relation(fields: [legalTextId], references: [id], onDelete: Cascade)
+  version     Int
+  title       String?
+  summary     String?
+  content     String?
+  status      String?
+  verificationLevel String?
+  note        String?
+
+  createdAt DateTime @default(now())
+
+  @@index([legalTextId])
+}
+
+model LegalTextRelation {
+  id       String @id @default(cuid())
+  sourceId String
+  source   LegalText @relation("RelationSource", fields: [sourceId], references: [id], onDelete: Cascade)
+  targetId String
+  target   LegalText @relation("RelationTarget", fields: [targetId], references: [id])
+  // REPLACES | MODIFIES | ABROGATES | RELATED | CITES
+  type String
+  note String?
+
+  @@index([sourceId])
+  @@index([targetId])
+}
+
+model LegalTextTag {
+  id    String @id @default(cuid())
+  name  String @unique
+  texts LegalText[]
+}
+
+model LegalTextAttachment {
+  id          String  @id @default(cuid())
+  legalTextId String
+  legalText   LegalText @relation(fields: [legalTextId], references: [id], onDelete: Cascade)
+  fileAssetId String
+  fileAsset   FileAsset @relation(fields: [fileAssetId], references: [id])
+  isOfficial  Boolean @default(false)
+
+  @@index([legalTextId])
+}
+
+model LegalValidationAction {
+  id          String  @id @default(cuid())
+  legalTextId String
+  legalText   LegalText @relation(fields: [legalTextId], references: [id], onDelete: Cascade)
+  actorId     String
+  actor       User    @relation(fields: [actorId], references: [id])
+  decision    String  // VERIFY_DOC | VERIFY_META | LEGAL_REVIEW | APPROVE | PUBLISH | REJECT
+  comment     String?
+  fromStatus  String?
+  toStatus    String?
+  fromLevel   String?
+  toLevel     String?
+
+  createdAt DateTime @default(now())
+
+  @@index([legalTextId])
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  EduLex Academy — APPRENTISSAGE LUDIQUE
+// ══════════════════════════════════════════════════════════════════════════════
+
+model AcademyCategory {
+  id          String  @id @default(cuid())
+  name        String
+  key         String? @unique
+  description String?
+  icon        String?
+  order       Int     @default(0)
+
+  paths AcademyPath[]
+}
+
+model AcademyPath {
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+  categoryId  String
+  category    AcademyCategory @relation(fields: [categoryId], references: [id])
+  countryId   String?
+  country     Country? @relation(fields: [countryId], references: [id])
+  level       Int     @default(1) // 1..5
+  order       Int     @default(0)
+  isPublished Boolean @default(false)
+
+  units        AcademyUnit[]
+  progress     UserProgress[]
+  certificates Certificate[]
+
+  createdAt DateTime @default(now())
+
+  @@index([categoryId])
+  @@index([countryId])
+}
+
+model AcademyUnit {
+  id     String @id @default(cuid())
+  title  String
+  pathId String
+  path   AcademyPath @relation(fields: [pathId], references: [id], onDelete: Cascade)
+  order  Int    @default(0)
+
+  requiresId String?
+  requires   AcademyUnit?  @relation("UnitPrereq", fields: [requiresId], references: [id])
+  unlocks    AcademyUnit[] @relation("UnitPrereq")
+
+  lessons AcademyLesson[]
+
+  @@index([pathId])
+}
+
+model AcademyLesson {
+  id      String @id @default(cuid())
+  title   String
+  unitId  String
+  unit    AcademyUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  order   Int    @default(0)
+  content String?
+
+  questions Question[]
+
+  @@index([unitId])
+}
+
+model Question {
+  id       String  @id @default(cuid())
+  lessonId String?
+  lesson   AcademyLesson? @relation(fields: [lessonId], references: [id])
+  // QCU | QCM | TRUE_FALSE | FILL_BLANK | DRAG_DROP | MATCH | ORDER |
+  // STATUS_SPOT | TIMED | CASE | SCENARIO
+  type        String
+  prompt      String
+  explanation String?
+  difficulty  String  @default("EASY") // EASY | MEDIUM | HARD
+  level       Int     @default(1)
+  points      Int     @default(10)
+  status      String  @default("DRAFT") // DRAFT | PUBLISHED | SUSPENDED
+
+  legalTextId String?
+  legalText   LegalText? @relation(fields: [legalTextId], references: [id])
+  articleRef  String?
+  countryId   String?
+  country     Country?   @relation(fields: [countryId], references: [id])
+  sectorId    String?
+  sector      Sector?    @relation(fields: [sectorId], references: [id])
+
+  choices  QuestionChoice[]
+  attempts QuestionAttempt[]
+  reviewRecos ReviewRecommendation[]
+
+  createdAt DateTime @default(now())
+
+  @@index([lessonId])
+  @@index([legalTextId])
+}
+
+model QuestionChoice {
+  id         String  @id @default(cuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  label      String
+  isCorrect  Boolean @default(false)
+  order      Int     @default(0)
+
+  @@index([questionId])
+}
+
+model QuestionAttempt {
+  id         String  @id @default(cuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isCorrect  Boolean
+  answer     String? // JSON : réponse fournie
+  earnedXp   Int     @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([questionId])
+  @@index([userId])
+}
+
+model UserProgress {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pathId String
+  path   AcademyPath @relation(fields: [pathId], references: [id], onDelete: Cascade)
+  status   String @default("IN_PROGRESS") // NOT_STARTED | IN_PROGRESS | COMPLETED
+  progress Int    @default(0) // 0..100
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, pathId])
+  @@index([userId])
+}
+
+model UserXP {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalXp          Int      @default(0)
+  level            Int      @default(1)
+  streak           Int      @default(0)
+  lastActivityDate DateTime?
+}
+
+model Badge {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  name        String
+  description String?
+  icon        String?
+  criteria    String?
+
+  users UserBadge[]
+}
+
+model UserBadge {
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId  String
+  badge    Badge  @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  awardedAt DateTime @default(now())
+
+  @@id([userId, badgeId])
+  @@index([badgeId])
+}
+
+model Challenge {
+  id          String  @id @default(cuid())
+  type        String  // DAILY | WEEKLY
+  title       String
+  description String?
+  startsAt    DateTime?
+  endsAt      DateTime?
+  countryId   String?
+  country     Country? @relation(fields: [countryId], references: [id])
+
+  attempts ChallengeAttempt[]
+
+  createdAt DateTime @default(now())
+}
+
+model ChallengeAttempt {
+  id          String  @id @default(cuid())
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score       Int     @default(0)
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([challengeId])
+  @@index([userId])
+}
+
+model Certificate {
+  id       String  @id @default(cuid())
+  userId   String
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pathId   String
+  path     AcademyPath @relation(fields: [pathId], references: [id])
+  code     String  @unique
+  score    Int     @default(0)
+  issuedAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model ReviewRecommendation {
+  id          String  @id @default(cuid())
+  userId      String
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  legalTextId String?
+  legalText   LegalText? @relation(fields: [legalTextId], references: [id])
+  questionId  String?
+  question    Question? @relation(fields: [questionId], references: [id])
+  reason      String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  STATISTIQUES DE FRÉQUENTATION
+// ══════════════════════════════════════════════════════════════════════════════
+
+model Visit {
+  id        String   @id @default(cuid())
+  path      String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

@@ -1,0 +1,60 @@
+{
+  "name": "eduweb-governance",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EduWeb Governance — plateforme de gouvernance administrative, reporting institutionnel et référentiel réglementaire international EduLex.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "postinstall": "prisma generate",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "node --import tsx --test src/lib/edulex-code.test.ts",
+    "test:e2e": "playwright test",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:seed:countries": "tsx prisma/seed-countries.ts",
+    "db:studio": "prisma studio",
+    "db:reset": "prisma migrate reset --force"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^3.10.0",
+    "@prisma/client": "^6.3.1",
+    "bcryptjs": "^2.4.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "country-flag-icons": "^1.6.17",
+    "country-state-city": "^3.2.1",
+    "date-fns": "^4.1.0",
+    "i18n-iso-countries": "^7.14.0",
+    "lucide-react": "^0.474.0",
+    "next": "15.5.19",
+    "pdf-lib": "^1.17.1",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "react-hook-form": "^7.54.2",
+    "recharts": "^2.15.0",
+    "tailwind-merge": "^2.6.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20.17.16",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "15.5.19",
+    "postcss": "^8.5.1",
+    "prisma": "^6.3.1",
+    "tailwindcss": "^3.4.17",
+    "tailwindcss-animate": "^1.0.7",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
