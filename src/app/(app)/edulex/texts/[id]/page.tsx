@@ -13,10 +13,12 @@ import {
   History,
   Link2,
   Gavel,
+  Paperclip,
 } from "lucide-react";
 import { requireUser, hasPermission, fullName } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FileUpload } from "@/components/ui/file-upload";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { VerificationBadge } from "@/components/ui/verification-badge";
@@ -70,6 +72,7 @@ export default async function LegalTextDetailPage({
       versions: { orderBy: { version: "desc" } },
       relationsFrom: { include: { target: true } },
       validationLog: { include: { actor: true }, orderBy: { createdAt: "desc" } },
+      attachments: { include: { fileAsset: true } },
     },
   });
 
@@ -77,6 +80,8 @@ export default async function LegalTextDetailPage({
 
   const canValidate = hasPermission(user, "edulex:validate");
   const canPublish = hasPermission(user, "edulex:publish");
+  const canEditDoc = hasPermission(user, "edulex:update") || hasPermission(user, "edulex:create") || hasPermission(user, "edulex:manage");
+  const fmtSize = (b: number) => (b > 1048576 ? `${(b / 1048576).toFixed(1)} Mo` : `${Math.max(1, Math.round(b / 1024))} Ko`);
   const isUnverified = text.verificationLevel === "V0";
   const isObsolete = ["ABROGATED", "REPLACED", "SUSPENDED"].includes(text.status);
   const typeMeta = metaOf(LEGAL_TYPE_MAP, text.type);
@@ -167,6 +172,38 @@ export default async function LegalTextDetailPage({
               )}
             </CardContent>
           </Card>
+
+          {/* Documents source (PDF officiels) */}
+          {(text.attachments.length > 0 || canEditDoc) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Paperclip className="size-4 text-brand-700" /> Documents source</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {text.attachments.length > 0 ? (
+                  <ul className="space-y-2">
+                    {text.attachments.map((a) => (
+                      <li key={a.id}>
+                        <a href={a.fileAsset.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 p-3 transition-colors hover:bg-slate-50">
+                          <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-ink">
+                            <Download className="size-4 shrink-0 text-brand-700" />
+                            <span className="truncate">{a.fileAsset.filename}</span>
+                            {a.isOfficial && <Badge tone="success">Officiel</Badge>}
+                          </span>
+                          <span className="shrink-0 text-xs text-slate-400">{fmtSize(a.fileAsset.size)}</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-slate-400">Aucun document source téléversé.</p>
+                )}
+                {canEditDoc && (
+                  <FileUpload endpoint={`/api/blob/edulex/${text.id}`} accept="application/pdf,image/*" label="Téléverser un document source (PDF)" />
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Relations */}
           {text.relationsFrom.length > 0 && (

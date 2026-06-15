@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ClipboardList, CalendarRange, Building2, User, Scale, History, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ClipboardList, CalendarRange, Building2, User, Scale, History, Paperclip, Download, type LucideIcon } from "lucide-react";
+import { FileUpload } from "@/components/ui/file-upload";
 import { requireUser, hasPermission, fullName, roleKeys, isSuperAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getValidationHierarchy } from "@/lib/validation-hierarchy";
@@ -47,6 +48,7 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
       country: true,
       legalTexts: true,
       validationActions: { include: { actor: true }, orderBy: { createdAt: "desc" } },
+      attachments: { include: { fileAsset: true } },
     },
   });
 
@@ -54,8 +56,10 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
 
   const isAuthor = activity.authorId === user.id;
   const canValidate = hasPermission(user, "activity:validate");
+  const canAttach = isAuthor || hasPermission(user, "activity:update") || hasPermission(user, "activity:validate");
   const editable = ["DRAFT", "TO_CORRECT", "REJECTED"].includes(activity.status);
   const description = getDescription(activity.data);
+  const fmtSize = (b: number) => (b > 1048576 ? `${(b / 1048576).toFixed(1)} Mo` : `${Math.max(1, Math.round(b / 1024))} Ko`);
 
   // Hiérarchie de validation : niveau courant attendu et habilitation de l'utilisateur.
   const hierarchy = await getValidationHierarchy();
@@ -104,6 +108,37 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
                     <span className="font-mono text-[11px] text-slate-400">{t.code}</span>
                   </Link>
                 ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Pièces jointes */}
+          {(activity.attachments.length > 0 || canAttach) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Paperclip className="size-4 text-brand-700" /> Pièces jointes</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {activity.attachments.length > 0 ? (
+                  <ul className="space-y-2">
+                    {activity.attachments.map((a) => (
+                      <li key={a.id}>
+                        <a href={a.fileAsset.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 p-3 transition-colors hover:bg-slate-50">
+                          <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-ink">
+                            <Download className="size-4 shrink-0 text-brand-700" />
+                            <span className="truncate">{a.fileAsset.filename}</span>
+                          </span>
+                          <span className="shrink-0 text-xs text-slate-400">{fmtSize(a.fileAsset.size)}</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-slate-400">Aucune pièce jointe.</p>
+                )}
+                {canAttach && (
+                  <FileUpload endpoint={`/api/blob/activity/${activity.id}`} accept="application/pdf,image/*,.doc,.docx,.xls,.xlsx" label="Joindre un document" />
+                )}
               </CardContent>
             </Card>
           )}

@@ -4,6 +4,7 @@ import { requireUser, fullName, roleKeys } from "@/lib/auth";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Flag } from "@/components/ui/flag";
+import { FileUpload } from "@/components/ui/file-upload";
 import { initials } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Mon profil" };
@@ -24,10 +25,15 @@ export default async function AccountPage() {
 
       <Card>
         <CardContent className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center">
-          <span className="flex size-20 items-center justify-center rounded-3xl bg-brand-700 text-2xl font-extrabold text-white">
-            {initials(user.firstName, user.lastName)}
-          </span>
-          <div>
+          {user.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={user.avatarUrl} alt={fullName(user)} className="size-20 shrink-0 rounded-3xl object-cover ring-1 ring-slate-200" />
+          ) : (
+            <span className="flex size-20 shrink-0 items-center justify-center rounded-3xl bg-brand-700 text-2xl font-extrabold text-white">
+              {initials(user.firstName, user.lastName)}
+            </span>
+          )}
+          <div className="flex-1">
             <h2 className="text-xl font-extrabold text-institutional-900">{fullName(user)}</h2>
             <div className="mt-2 flex flex-wrap gap-2">
               {roles.map((r) => (
@@ -37,6 +43,7 @@ export default async function AccountPage() {
               ))}
             </div>
           </div>
+          <FileUpload endpoint="/api/blob/avatar" accept="image/*" label="Changer la photo" />
         </CardContent>
       </Card>
 

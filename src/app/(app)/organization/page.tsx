@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Flag } from "@/components/ui/flag";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FileUpload } from "@/components/ui/file-upload";
 import { buttonVariants } from "@/components/ui/button";
 import { STRUCTURE_TYPE_MAP } from "@/lib/enums";
 import { cn } from "@/lib/utils";
@@ -118,15 +119,23 @@ export default async function OrganizationPage() {
             return (
               <Card key={org.id}>
                 <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <span className="flex size-11 items-center justify-center rounded-2xl bg-institutional-50 text-institutional-700"><Building2 className="size-5" /></span>
+                      {org.logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={org.logoUrl} alt={org.name} className="size-11 shrink-0 rounded-2xl object-cover ring-1 ring-slate-200" />
+                      ) : (
+                        <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-institutional-50 text-institutional-700"><Building2 className="size-5" /></span>
+                      )}
                       <div>
                         <h2 className="font-extrabold text-institutional-900">{org.name}</h2>
                         <p className="inline-flex items-center gap-1 text-xs text-slate-400">{org.country && <><Flag code={org.country.code} className="w-4" /> {org.country.name} · </>}{org._count.structures} structure(s)</p>
                       </div>
                     </div>
-                    {org.type && <Badge tone="neutral">{org.type}</Badge>}
+                    <div className="flex items-center gap-2">
+                      {org.type && <Badge tone="neutral">{org.type}</Badge>}
+                      {canManage && <FileUpload endpoint="/api/blob/org-logo" accept="image/*" label="Logo" variant="ghost" extraFields={{ orgId: org.id }} />}
+                    </div>
                   </div>
 
                   <div className="mt-4">
