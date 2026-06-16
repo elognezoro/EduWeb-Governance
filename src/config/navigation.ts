@@ -1,6 +1,7 @@
 import {
   Home,
   LayoutDashboard,
+  CalendarClock,
   Building2,
   Users,
   FileText,
@@ -34,6 +35,7 @@ export const NAVIGATION: NavGroup[] = [
     items: [
       { label: "Accueil", href: "/", icon: Home },
       { label: "Tableau de bord", href: "/dashboard", icon: LayoutDashboard },
+      { label: "Rendez-vous", href: "/rendez-vous", icon: CalendarClock },
     ],
   },
   {

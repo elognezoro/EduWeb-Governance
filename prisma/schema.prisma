@@ -77,6 +77,7 @@ model User {
   challengeAttempts       ChallengeAttempt[]
   certificates            Certificate[]
   reviewRecommendations   ReviewRecommendation[]
+  appointments            Appointment[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -431,6 +432,29 @@ model ValidationAction {
   createdAt DateTime @default(now())
 
   @@index([activityId])
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  AGENDA — RENDEZ-VOUS
+// ══════════════════════════════════════════════════════════════════════════════
+
+model Appointment {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title    String
+  startAt  DateTime // date + heure du rendez-vous
+  location String?
+  notes    String?
+  // Délai de rappel en minutes avant le RDV : 5 | 60 | 1440. 0 = aucun.
+  reminderMinutes Int      @default(60)
+  done            Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([startAt])
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
