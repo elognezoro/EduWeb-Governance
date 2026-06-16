@@ -2,6 +2,7 @@ import {
   Home,
   LayoutDashboard,
   CalendarClock,
+  ClipboardCheck,
   Building2,
   Users,
   FileText,
@@ -36,6 +37,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: "Accueil", href: "/", icon: Home },
       { label: "Tableau de bord", href: "/dashboard", icon: LayoutDashboard },
       { label: "Rendez-vous", href: "/rendez-vous", icon: CalendarClock },
+      { label: "Bilan", href: "/bilan", icon: ClipboardCheck },
     ],
   },
   {
