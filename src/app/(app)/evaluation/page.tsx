@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getScoreReport, scoreLabel } from "@/lib/score";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
+import { AdviceCard } from "@/components/evaluation/advice-card";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Évaluation" };
@@ -21,6 +22,7 @@ export default async function EvaluationPage() {
   const r = await getScoreReport(prisma, user.id, 4);
   const { label, tone } = scoreLabel(r.current);
   const t = TONE[tone];
+  const hasData = r.weeks.some((w) => w.total > 0);
 
   return (
     <div className="space-y-7">
@@ -44,6 +46,9 @@ export default async function EvaluationPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Conseils IA — à la demande, ciblés sur le secteur faible */}
+      <AdviceCard current={r.current} trend={r.trend} hasData={hasData} />
 
       {/* Évolution 4 semaines */}
       <Card>
