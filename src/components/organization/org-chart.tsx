@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Network, MapPin, Users, Pencil, Move, X, Landmark, Building2,
-  AlertCircle, Loader2, ArrowDownToLine,
+  AlertCircle, Loader2, ArrowDownToLine, GripVertical,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +33,20 @@ export interface OrgOrganization { id: string; name: string; type: string | null
 
 type MoveTarget = { parentId?: string | null; ministryId?: string | null; organizationId?: string };
 
+/** Applique un déplacement localement (mise à jour optimiste) : le nœud + son sous-arbre suivent. */
+function applyMove(list: OrgNode[], id: string, target: MoveTarget): OrgNode[] {
+  const childrenOf = new Map<string, string[]>();
+  for (const s of list) if (s.parentId) (childrenOf.get(s.parentId) ?? childrenOf.set(s.parentId, []).get(s.parentId)!).push(s.id);
+  const sub = new Set<string>();
+  const stack = [id];
+  while (stack.length) { const c = stack.pop()!; for (const ch of childrenOf.get(c) ?? []) if (!sub.has(ch)) { sub.add(ch); stack.push(ch); } }
+  return list.map((n) => {
+    if (n.id === id) return { ...n, parentId: target.parentId ?? null, ministryId: target.ministryId ?? null, organizationId: target.organizationId ?? n.organizationId };
+    if (sub.has(n.id)) return { ...n, ministryId: target.ministryId ?? null, organizationId: target.organizationId ?? n.organizationId };
+    return n;
+  });
+}
+
 export function OrgChart({
   structures, ministries, organizations, canManage, filtered,
 }: {
@@ -45,40 +59,52 @@ export function OrgChart({
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  // Déplacement « au clic » : on sélectionne une structure, puis on clique sa destination.
-  const [movingId, setMovingId] = useState<string | null>(null);
-  const [live, setLive] = useState(""); // annonces pour lecteurs d'écran
+  const [live, setLive] = useState("");
+  const [movingId, setMovingId] = useState<string | null>(null); // sélection « au clic »
+  const [draggedId, setDraggedId] = useState<string | null>(null); // glisser-déposer
+  const [overKey, setOverKey] = useState<string | null>(null);
 
-  const byId = useMemo(() => new Map(structures.map((s) => [s.id, s])), [structures]);
+  // Mise à jour optimiste : on affiche le résultat immédiatement, on réconcilie ensuite.
+  const [override, setOverride] = useState<OrgNode[] | null>(null);
+  const sig = useMemo(() => structures.map((s) => `${s.id}:${s.parentId}:${s.ministryId}:${s.organizationId}`).join("|"), [structures]);
+  const prevSig = useRef(sig);
+  useEffect(() => { if (sig !== prevSig.current) { prevSig.current = sig; setOverride(null); } }, [sig]);
+  const nodes = override ?? structures;
+
+  const activeId = movingId ?? draggedId; // structure en cours de relocalisation (clic ou glisser)
+
+  const byId = useMemo(() => new Map(nodes.map((s) => [s.id, s])), [nodes]);
   const minName = useMemo(() => new Map(ministries.map((m) => [m.id, m.name])), [ministries]);
   const orgName = useMemo(() => new Map(organizations.map((o) => [o.id, o.name])), [organizations]);
 
-  // Descendants de la structure en cours de déplacement (cibles interdites) + elle-même.
+  // Descendants de la structure active (cibles interdites) + elle-même.
   const invalid = useMemo(() => {
     const set = new Set<string>();
-    if (!movingId) return set;
+    if (!activeId) return set;
     const childrenOf = new Map<string, string[]>();
-    for (const s of structures) if (s.parentId) (childrenOf.get(s.parentId) ?? childrenOf.set(s.parentId, []).get(s.parentId)!).push(s.id);
-    set.add(movingId);
-    const stack = [movingId];
-    while (stack.length) {
-      const cur = stack.pop()!;
-      for (const c of childrenOf.get(cur) ?? []) if (!set.has(c)) { set.add(c); stack.push(c); }
-    }
+    for (const s of nodes) if (s.parentId) (childrenOf.get(s.parentId) ?? childrenOf.set(s.parentId, []).get(s.parentId)!).push(s.id);
+    set.add(activeId);
+    const stack = [activeId];
+    while (stack.length) { const cur = stack.pop()!; for (const c of childrenOf.get(cur) ?? []) if (!set.has(c)) { set.add(c); stack.push(c); } }
     return set;
-  }, [movingId, structures]);
+  }, [activeId, nodes]);
 
   const moving = movingId ? byId.get(movingId) ?? null : null;
 
   function move(target: MoveTarget) {
-    if (!movingId || pending) return;
-    const id = movingId;
+    const id = movingId ?? draggedId;
+    if (!id || pending) return;
     const name = byId.get(id)?.name ?? "Structure";
     setError(null);
+    setMovingId(null);
+    setDraggedId(null);
+    setOverKey(null);
+    setOverride(applyMove(nodes, id, target)); // ⚡ affichage immédiat
+    setLive(`Déplacement de ${name}…`);
     start(async () => {
       const res = await moveStructure({ id, ...target });
-      if (!res.ok) { setError(res.error); setLive(`Échec du déplacement : ${res.error}`); }
-      else { setMovingId(null); setLive(`${name} déplacée avec succès.`); router.refresh(); }
+      if (!res.ok) { setError(res.error); setLive(`Échec du déplacement : ${res.error}`); setOverride(null); }
+      else { setLive(`${name} déplacée avec succès.`); router.refresh(); }
     });
   }
 
@@ -89,8 +115,8 @@ export function OrgChart({
     setLive(opening ? `Mode déplacement activé pour ${byId.get(id)?.name ?? ""}. Choisissez une destination.` : "Déplacement annulé.");
   }
 
-  const withMin = structures.filter((s) => s.ministryId);
-  const noMin = structures.filter((s) => !s.ministryId);
+  const withMin = nodes.filter((s) => s.ministryId);
+  const noMin = nodes.filter((s) => !s.ministryId);
   const groups = ministries.map((m) => ({ m, items: withMin.filter((s) => s.ministryId === m.id) })).filter((g) => g.items.length > 0);
 
   function context(n: OrgNode): string | null {
@@ -99,19 +125,26 @@ export function OrgChart({
     return orgName.get(n.organizationId) ?? null;
   }
 
-  // En-tête d'apex (ministère / organisation) : devient une cible cliquable pendant un déplacement.
-  function ApexDropZone({ label, target, children, className }: { label: string; target: MoveTarget; children: ReactNode; className?: string }) {
-    const armed = !!movingId;
+  // En-tête d'apex (ministère / organisation) : cible de dépôt (clic ou glisser).
+  function ApexDropZone({ label, target, dropKey, children, className }: { label: string; target: MoveTarget; dropKey: string; children: ReactNode; className?: string }) {
+    const armed = !!activeId;
+    const clickable = !!movingId;
+    const highlighted = clickable || overKey === dropKey;
     return (
       <div
-        onClick={armed ? () => move(target) : undefined}
-        onKeyDown={armed ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); move(target); } } : undefined}
-        role={armed ? "button" : undefined}
-        tabIndex={armed ? 0 : undefined}
-        aria-label={armed ? `Déplacer ici : ${label}` : undefined}
+        onClick={clickable ? () => move(target) : undefined}
+        onKeyDown={clickable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); move(target); } } : undefined}
+        role={clickable ? "button" : undefined}
+        tabIndex={clickable ? 0 : undefined}
+        aria-label={clickable ? `Déplacer ici : ${label}` : undefined}
+        onDragOver={(e: DragEvent) => { if (draggedId) { e.preventDefault(); setOverKey(dropKey); } }}
+        onDragLeave={() => setOverKey((k) => (k === dropKey ? null : k))}
+        onDrop={(e: DragEvent) => { if (draggedId) { e.preventDefault(); move(target); } }}
         className={cn(
           "rounded-2xl p-2 transition-all",
-          armed && "cursor-pointer ring-2 ring-brand-300 hover:ring-brand-500 hover:bg-brand-50/60 focus:outline-none focus:ring-2 focus:ring-brand-500",
+          armed && "ring-2 ring-brand-300",
+          highlighted && "bg-brand-50/60 ring-brand-500",
+          clickable && "cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500",
           className,
         )}
       >
@@ -125,9 +158,9 @@ export function OrgChart({
     );
   }
 
-  const renderNodes = (nodes: OrgNode[], parentId: string | null, depth: number): ReactNode => {
-    const ids = new Set(nodes.map((n) => n.id));
-    const children = nodes.filter((n) => (parentId === null ? n.parentId === null || !ids.has(n.parentId) : n.parentId === parentId));
+  const renderNodes = (list: OrgNode[], parentId: string | null, depth: number): ReactNode => {
+    const ids = new Set(list.map((n) => n.id));
+    const children = list.filter((n) => (parentId === null ? n.parentId === null || !ids.has(n.parentId) : n.parentId === parentId));
     if (children.length === 0) return null;
     return (
       <ul className={cn(depth > 0 && "ml-4 border-l border-slate-100 pl-4")}>
@@ -135,22 +168,32 @@ export function OrgChart({
           const typeLabel = STRUCTURE_TYPE_MAP[n.type]?.label ?? n.type;
           const ctx = context(n);
           const isMoving = movingId === n.id;
-          const isBlocked = !!movingId && invalid.has(n.id);
-          const isTarget = !!movingId && !invalid.has(n.id);
+          const isBlocked = !!activeId && invalid.has(n.id);
+          const isTarget = !!activeId && !invalid.has(n.id);
+          const clickTarget = !!movingId && isTarget;
+          const dropKey = `s:${n.id}`;
+          const highlighted = clickTarget || overKey === dropKey;
+          const moveTarget: MoveTarget = { parentId: n.id, ministryId: n.ministryId, organizationId: n.organizationId };
           return (
             <li key={n.id} className="mt-2">
               <div
-                onClick={isTarget ? () => move({ parentId: n.id, ministryId: n.ministryId, organizationId: n.organizationId }) : undefined}
-                onKeyDown={isTarget ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); move({ parentId: n.id, ministryId: n.ministryId, organizationId: n.organizationId }); } } : undefined}
-                role={isTarget ? "button" : undefined}
-                tabIndex={isTarget ? 0 : undefined}
-                aria-label={isTarget ? `Déplacer sous ${n.name}` : undefined}
+                draggable={canManage && !movingId}
+                onDragStart={(e: DragEvent) => { setDraggedId(n.id); setMovingId(null); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", n.id); }}
+                onDragEnd={() => { setDraggedId(null); setOverKey(null); }}
+                onDragOver={(e: DragEvent) => { if (draggedId && isTarget) { e.preventDefault(); setOverKey(dropKey); } }}
+                onDragLeave={() => setOverKey((k) => (k === dropKey ? null : k))}
+                onDrop={(e: DragEvent) => { if (draggedId && isTarget) { e.preventDefault(); move(moveTarget); } }}
+                onClick={clickTarget ? () => move(moveTarget) : undefined}
+                onKeyDown={clickTarget ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); move(moveTarget); } } : undefined}
+                role={clickTarget ? "button" : undefined}
+                tabIndex={clickTarget ? 0 : undefined}
+                aria-label={clickTarget ? `Déplacer sous ${n.name}` : undefined}
                 className={cn(
                   "group flex items-center gap-2.5 rounded-2xl border bg-card px-4 py-2.5 transition-all focus:outline-none",
-                  isMoving && "border-brand-400 bg-brand-50 ring-2 ring-brand-400",
-                  isTarget && "cursor-pointer border-brand-200 bg-brand-50/30 hover:border-brand-400 hover:bg-brand-50 hover:ring-2 hover:ring-brand-300 focus:ring-2 focus:ring-brand-400",
-                  isBlocked && "border-slate-100 opacity-40",
-                  !movingId && "border-slate-100 hover:bg-slate-50",
+                  isMoving ? "border-brand-400 bg-brand-50 ring-2 ring-brand-400"
+                    : highlighted ? "cursor-pointer border-brand-400 bg-brand-50 ring-2 ring-brand-300 focus:ring-2 focus:ring-brand-400"
+                    : isBlocked ? "border-slate-100 opacity-40"
+                    : cn("border-slate-100 hover:bg-slate-50", canManage && !movingId && "cursor-move"),
                 )}
               >
                 {canManage && (!movingId || isMoving) && (
@@ -158,13 +201,13 @@ export function OrgChart({
                     type="button"
                     onClick={(e) => { e.stopPropagation(); toggleMove(n.id); }}
                     aria-label={isMoving ? `Annuler le déplacement de ${n.name}` : `Déplacer ${n.name}`}
-                    title={isMoving ? "Annuler le déplacement" : "Déplacer cette structure"}
+                    title={isMoving ? "Annuler le déplacement" : "Déplacer (ou glisser-déposer la ligne)"}
                     className={cn(
                       "shrink-0 rounded-lg p-1.5 transition-colors",
                       isMoving ? "bg-brand-600 text-white hover:bg-brand-700" : "text-slate-300 hover:bg-slate-100 hover:text-slate-600",
                     )}
                   >
-                    {isMoving ? <X className="size-4" /> : <Move className="size-4" />}
+                    {isMoving ? <X className="size-4" /> : <GripVertical className="size-4" />}
                   </button>
                 )}
                 <Network className="size-4 shrink-0 text-brand-600" />
@@ -189,12 +232,12 @@ export function OrgChart({
                   <span className="hidden items-center gap-1 text-xs text-slate-400 sm:flex"><Users className="size-3.5" /> {n.memberCount}</span>
                 )}
                 {canManage && !movingId && (
-                  <Link href={`/organization/structures/${n.id}`} onClick={(e) => e.stopPropagation()} className="text-slate-400 opacity-0 transition-opacity hover:text-brand-700 group-hover:opacity-100">
+                  <Link href={`/organization/structures/${n.id}`} onClick={(e) => e.stopPropagation()} draggable={false} className="text-slate-400 opacity-0 transition-opacity hover:text-brand-700 group-hover:opacity-100">
                     <Pencil className="size-4" />
                   </Link>
                 )}
               </div>
-              {renderNodes(nodes, n.id, depth + 1)}
+              {renderNodes(list, n.id, depth + 1)}
             </li>
           );
         })}
@@ -213,7 +256,7 @@ export function OrgChart({
         </div>
       )}
 
-      {/* Bandeau de déplacement actif */}
+      {/* Bandeau de déplacement actif (mode clic) */}
       {canManage && moving && (
         <div className="sticky top-2 z-20 flex flex-wrap items-center gap-3 rounded-2xl border border-brand-300 bg-brand-50 px-4 py-3 shadow-sm">
           {pending ? <Loader2 className="size-4 shrink-0 animate-spin text-brand-700" /> : <Move className="size-4 shrink-0 text-brand-700" />}
@@ -226,11 +269,11 @@ export function OrgChart({
         </div>
       )}
 
-      {/* Aide quand aucun déplacement en cours */}
+      {/* Aide */}
       {canManage && !moving && (
         <p className="flex items-center gap-2 text-xs text-slate-400">
           <Move className="size-3.5" />
-          Cliquez l'icône de déplacement d'une structure, puis choisissez sa destination parmi les zones surlignées.
+          Glissez-déposez une structure sur sa destination, ou cliquez son icône <GripVertical className="inline size-3.5" /> puis la zone d'accueil surlignée.
         </p>
       )}
 
@@ -241,7 +284,7 @@ export function OrgChart({
           {groups.map(({ m, items }) => (
             <Card key={m.id}>
               <CardContent className="p-6">
-                <ApexDropZone label={`racine de ${m.name}`} target={{ parentId: null, ministryId: m.id }}>
+                <ApexDropZone label={`racine de ${m.name}`} dropKey={`m:${m.id}`} target={{ parentId: null, ministryId: m.id }}>
                   <div className="flex items-center gap-3">
                     <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-700"><Landmark className="size-5" /></span>
                     <div>
@@ -257,7 +300,7 @@ export function OrgChart({
         </section>
       )}
 
-      {/* Organisations clientes (structures non rattachées à un ministère) */}
+      {/* Organisations clientes */}
       {organizations.length > 0 && (
         <section className="space-y-5">
           {groups.length > 0 && <h2 className="text-xs font-bold uppercase tracking-wide text-slate-400">Organisations clientes</h2>}
@@ -266,7 +309,7 @@ export function OrgChart({
             return (
               <Card key={org.id}>
                 <CardContent className="p-6">
-                  <ApexDropZone label={`racine de ${org.name}`} target={{ parentId: null, ministryId: null, organizationId: org.id }}>
+                  <ApexDropZone label={`racine de ${org.name}`} dropKey={`o:${org.id}`} target={{ parentId: null, ministryId: null, organizationId: org.id }}>
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         {org.logoUrl ? (
@@ -280,7 +323,7 @@ export function OrgChart({
                           <p className="inline-flex items-center gap-1 text-xs text-slate-400">{org.countryCode && <><Flag code={org.countryCode} className="w-4" /> {org.countryName} · </>}{orgStructures.length} structure(s)</p>
                         </div>
                       </div>
-                      {!movingId && (
+                      {!activeId && (
                         <div className="flex items-center gap-2">
                           {org.type && <Badge tone="neutral">{org.type}</Badge>}
                           {canManage && <FileUpload purpose="logo" entityId={org.id} accept="image/*" label="Logo" variant="ghost" />}
