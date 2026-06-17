@@ -165,6 +165,14 @@ export const ABSENCE_MOTIFS: OptionMeta[] = [
 ];
 export const ABSENCE_MOTIF_MAP = indexBy(ABSENCE_MOTIFS);
 
+// ── Statut d'une autorisation d'absence (circuit de validation) ──────────────
+export const ABSENCE_STATUS: OptionMeta[] = [
+  { value: "PENDING", label: "En attente", tone: "warning" },
+  { value: "APPROVED", label: "Approuvée", tone: "success" },
+  { value: "REFUSED", label: "Refusée", tone: "danger" },
+];
+export const ABSENCE_STATUS_MAP = indexBy(ABSENCE_STATUS);
+
 // ── Genre (pour les messages de distinction) ────────────────────────────────
 export const GENDER_OPTIONS: { value: string; label: string }[] = [
   { value: "M", label: "Homme" },

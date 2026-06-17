@@ -24,7 +24,7 @@ export default async function AbsencesPage({ searchParams }: { searchParams: Pro
     getManagedAgents(prisma, user.id, admin),
     prisma.user.findUnique({
       where: { id: user.id },
-      select: { id: true, firstName: true, lastName: true, structure: { select: { name: true } }, ministry: { select: { name: true } } },
+      select: { id: true, firstName: true, lastName: true, managerId: true, structure: { select: { name: true } }, ministry: { select: { name: true } } },
     }),
   ]);
 
@@ -40,7 +40,7 @@ export default async function AbsencesPage({ searchParams }: { searchParams: Pro
     ? await prisma.absenceRecord.findMany({
         where: { agentId: { in: rosterIds }, year },
         orderBy: { startDate: "desc" },
-        select: { id: true, agentId: true, motif: true, startDate: true, endDate: true, days: true, note: true },
+        select: { id: true, agentId: true, motif: true, startDate: true, endDate: true, days: true, note: true, status: true, decisionNote: true },
       })
     : [];
 
@@ -55,35 +55,39 @@ export default async function AbsencesPage({ searchParams }: { searchParams: Pro
 
   const agents: ClientAgent[] = roster.map((a) => {
     const recs = byAgent.get(a.id) ?? [];
+    const approved = recs.filter((r) => r.status === "APPROVED"); // seules les absences approuvées comptent
     const canEdit = admin || managedIds.has(a.id);
+    const s = summarize(approved, policy);
     return {
       id: a.id,
       name: `${a.firstName} ${a.lastName}`.trim(),
       context: ctx(a),
       isSelf: a.isSelf,
       canEdit,
-      summary: (() => {
-        const s = summarize(recs, policy);
-        return { byMotif: s.byMotif, total: s.total, percent: s.percent, overThreshold: s.overThreshold, overQuota: s.overQuota };
-      })(),
-      records: recs.map((r) => ({ id: r.id, motif: r.motif, startISO: r.startDate.toISOString(), endISO: r.endDate.toISOString(), days: r.days, note: r.note })),
+      summary: { byMotif: s.byMotif, total: s.total, percent: s.percent, overThreshold: s.overThreshold, overQuota: s.overQuota },
+      records: recs.map((r) => ({
+        id: r.id, motif: r.motif, startISO: r.startDate.toISOString(), endISO: r.endDate.toISOString(),
+        days: r.days, note: r.note, status: r.status, decisionNote: r.decisionNote,
+      })),
     };
   });
 
   const editableAgents = agents.filter((a) => a.canEdit).map((a) => ({ id: a.id, name: a.name }));
   const canManagePolicy = admin || managed.length > 0;
+  const selfCanRequest = Boolean(self?.managerId); // l'agent peut demander s'il a un supérieur
 
   return (
     <div className="space-y-7">
       <PageHeader
         title="Autorisations d'absence"
-        description="Comptabilisez, par agent et par motif, les jours d'absence autorisée, avec ratio sur le congé annuel et alerte au seuil."
+        description="Demandez une absence, validez celles de vos agents, et suivez les jours autorisés avec ratio sur le congé annuel."
         icon={CalendarOff}
       />
       <AbsencesClient
         policy={policy}
         canManagePolicy={canManagePolicy}
         editableAgents={editableAgents}
+        selfCanRequest={selfCanRequest}
         agents={agents}
         year={year}
         years={years}

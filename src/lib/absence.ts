@@ -76,8 +76,8 @@ export async function getManagedAgents(prisma: PrismaClient, managerId: string, 
   });
 }
 
-/** Total des jours d'absence cumulés d'un agent sur une année. */
+/** Total des jours d'absence **approuvés** cumulés d'un agent sur une année. */
 export async function agentYearTotal(prisma: PrismaClient, agentId: string, year: number): Promise<number> {
-  const agg = await prisma.absenceRecord.aggregate({ where: { agentId, year }, _sum: { days: true } });
+  const agg = await prisma.absenceRecord.aggregate({ where: { agentId, year, status: "APPROVED" }, _sum: { days: true } });
   return agg._sum.days ?? 0;
 }

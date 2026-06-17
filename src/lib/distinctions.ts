@@ -70,7 +70,7 @@ export async function getDistinctions(
       select: { authorId: true, createdAt: true, status: true },
     }),
     prisma.absenceRecord.findMany({
-      where: { agentId: { in: agentIds }, year },
+      where: { agentId: { in: agentIds }, year, status: "APPROVED" },
       select: { agentId: true, motif: true, startDate: true, days: true },
     }),
   ]);

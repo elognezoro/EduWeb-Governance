@@ -87,6 +87,7 @@ model User {
   appointments            Appointment[]
   absencesAsAgent         AbsenceRecord[]          @relation("AgentAbsences")
   absencesRecorded        AbsenceRecord[]          @relation("AbsenceRecorder")
+  absencesDecided         AbsenceRecord[]          @relation("AbsenceDecider")
   passwordResetTokens     PasswordResetToken[]
 
   createdAt DateTime  @default(now())
@@ -490,10 +491,19 @@ model AbsenceRecord {
   agentId String
   agent   User   @relation("AgentAbsences", fields: [agentId], references: [id], onDelete: Cascade)
 
+  // Créateur de l'enregistrement (l'agent pour une demande, le supérieur pour un enreg. direct).
   recordedById String?
   recordedBy   User?   @relation("AbsenceRecorder", fields: [recordedById], references: [id])
 
-  // PERSONAL | STATUTORY | TRAINING | FORCE_MAJEURE
+  // Circuit de validation : PENDING (demande) | APPROVED | REFUSED.
+  // Défaut APPROVED : un enregistrement direct par le supérieur est validé d'office.
+  status       String    @default("APPROVED")
+  decidedById  String?
+  decidedBy    User?     @relation("AbsenceDecider", fields: [decidedById], references: [id])
+  decidedAt    DateTime?
+  decisionNote String?   // motif de refus / commentaire de décision
+
+  // PERSONAL | STATUTORY | TRAINING | MEDICAL | FORCE_MAJEURE
   motif     String
   startDate DateTime
   endDate   DateTime
@@ -506,6 +516,7 @@ model AbsenceRecord {
 
   @@index([agentId])
   @@index([year])
+  @@index([status])
 }
 
 // Politique d'absence (ligne globale unique, modifiable par l'admin / supérieur).

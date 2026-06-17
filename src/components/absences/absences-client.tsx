@@ -3,17 +3,17 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  CalendarOff, Plus, Trash2, Loader2, AlertCircle, AlertTriangle, ShieldAlert, SlidersHorizontal, User as UserIcon, ChevronDown,
+  CalendarOff, Plus, Trash2, Loader2, AlertCircle, AlertTriangle, ShieldAlert, SlidersHorizontal,
+  User as UserIcon, ChevronDown, Send, Check, X, Inbox,
 } from "lucide-react";
 import { Input, Label } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { ABSENCE_MOTIFS, ABSENCE_MOTIF_MAP } from "@/lib/enums";
+import { ABSENCE_MOTIFS, ABSENCE_MOTIF_MAP, ABSENCE_STATUS_MAP } from "@/lib/enums";
 import { MotifBarChart } from "@/components/absences/motif-bar-chart";
-import { recordAbsence, deleteAbsence, saveAbsencePolicy } from "@/app/(app)/absences/actions";
+import { recordAbsence, requestAbsence, decideAbsence, deleteAbsence, saveAbsencePolicy } from "@/app/(app)/absences/actions";
 
 const TONE_CHIP: Record<string, string> = {
   brand: "bg-brand-50 text-brand-700",
@@ -25,6 +25,17 @@ const TONE_CHIP: Record<string, string> = {
   success: "bg-brand-50 text-brand-700",
 };
 
+export interface ClientRecord {
+  id: string;
+  motif: string;
+  startISO: string;
+  endISO: string;
+  days: number;
+  note: string | null;
+  status: string; // PENDING | APPROVED | REFUSED
+  decisionNote: string | null;
+}
+
 export interface ClientAgent {
   id: string;
   name: string;
@@ -32,13 +43,11 @@ export interface ClientAgent {
   isSelf: boolean;
   canEdit: boolean;
   summary: { byMotif: Record<string, number>; total: number; percent: number; overThreshold: boolean; overQuota: boolean };
-  records: { id: string; motif: string; startISO: string; endISO: string; days: number; note: string | null }[];
+  records: ClientRecord[];
 }
 
 const dateFmt = new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
-function fdate(iso: string) {
-  return dateFmt.format(new Date(iso));
-}
+const fdate = (iso: string) => dateFmt.format(new Date(iso));
 function daysInclusive(start: string, end: string): number {
   const a = new Date(start).setHours(0, 0, 0, 0);
   const b = new Date(end).setHours(0, 0, 0, 0);
@@ -46,12 +55,20 @@ function daysInclusive(start: string, end: string): number {
   return Math.max(1, Math.round((b - a) / 86_400_000) + 1);
 }
 
+function StatusPill({ status }: { status: string }) {
+  const meta = ABSENCE_STATUS_MAP[status] ?? { label: status, tone: "neutral" };
+  return <span className={cn("inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold", TONE_CHIP[meta.tone] ?? TONE_CHIP.neutral)}>{meta.label}</span>;
+}
+
+type RunFn = (fn: () => Promise<{ ok: boolean; error?: string }>, after?: () => void) => void;
+
 export function AbsencesClient({
-  policy, canManagePolicy, editableAgents, agents, year, years,
+  policy, canManagePolicy, editableAgents, selfCanRequest, agents, year, years,
 }: {
   policy: { annualQuotaDays: number; warningThresholdDays: number };
   canManagePolicy: boolean;
   editableAgents: { id: string; name: string }[];
+  selfCanRequest: boolean;
   agents: ClientAgent[];
   year: number;
   years: number[];
@@ -60,7 +77,7 @@ export function AbsencesClient({
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const run = (fn: () => Promise<{ ok: boolean; error?: string }>, after?: () => void) => {
+  const run: RunFn = (fn, after) => {
     setError(null);
     start(async () => {
       const res = await fn();
@@ -68,6 +85,11 @@ export function AbsencesClient({
       else { after?.(); router.refresh(); }
     });
   };
+
+  // Demandes en attente que JE dois valider (agents que je gère).
+  const toValidate = agents
+    .filter((a) => a.canEdit && !a.isSelf)
+    .flatMap((a) => a.records.filter((r) => r.status === "PENDING").map((r) => ({ ...r, agentName: a.name })));
 
   return (
     <div className="space-y-6">
@@ -77,28 +99,25 @@ export function AbsencesClient({
         </div>
       )}
 
-      {/* Politique : quota annuel + seuil d'alerte */}
       <PolicyCard policy={policy} canManage={canManagePolicy} pending={pending} onSave={(v) => run(() => saveAbsencePolicy(v))} />
 
-      {/* Sélecteur d'année + formulaire d'enregistrement */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-2xl border border-slate-200 bg-card p-1">
-          {years.map((y) => (
-            <button
-              key={y}
-              type="button"
-              onClick={() => router.push(`/absences?year=${y}`)}
-              className={cn(
-                "rounded-xl px-4 py-1.5 text-sm font-semibold transition-colors",
-                y === year ? "bg-brand-600 text-white shadow-sm" : "text-slate-500 hover:text-ink"
-              )}
-            >
-              {y}
-            </button>
-          ))}
-        </div>
+      {/* Sélecteur d'année */}
+      <div className="inline-flex rounded-2xl border border-slate-200 bg-card p-1">
+        {years.map((y) => (
+          <button key={y} type="button" onClick={() => router.push(`/absences?year=${y}`)}
+            className={cn("rounded-xl px-4 py-1.5 text-sm font-semibold transition-colors", y === year ? "bg-brand-600 text-white shadow-sm" : "text-slate-500 hover:text-ink")}>
+            {y}
+          </button>
+        ))}
       </div>
 
+      {/* Demandes à valider (supérieur) */}
+      {toValidate.length > 0 && <ValidationQueue items={toValidate} pending={pending} run={run} />}
+
+      {/* Demander une absence (agent) */}
+      {selfCanRequest && <RequestForm quota={policy.annualQuotaDays} pending={pending} onSubmit={(input) => run(() => requestAbsence(input))} />}
+
+      {/* Enregistrement direct (supérieur) */}
       {editableAgents.length > 0 && (
         <RecordForm agents={editableAgents} quota={policy.annualQuotaDays} pending={pending} onSubmit={(input) => run(() => recordAbsence(input))} />
       )}
@@ -106,17 +125,76 @@ export function AbsencesClient({
       {/* Agents suivis */}
       <div className="space-y-4">
         {agents.length === 0 ? (
-          <Card><CardContent className="p-6 text-sm text-slate-500">
-            Aucun agent à suivre. Les agents dont vous êtes le supérieur hiérarchique apparaîtront ici.
-          </CardContent></Card>
+          <Card><CardContent className="p-6 text-sm text-slate-500">Aucun agent à suivre pour le moment.</CardContent></Card>
         ) : (
           agents.map((a) => (
-            <AgentCard key={a.id} agent={a} quota={policy.annualQuotaDays} threshold={policy.warningThresholdDays} pending={pending}
+            <AgentCard key={a.id} agent={a} quota={policy.annualQuotaDays} pending={pending}
               onDelete={(id) => run(() => deleteAbsence(id))} />
           ))
         )}
       </div>
     </div>
+  );
+}
+
+function ValidationQueue({ items, pending, run }: {
+  items: (ClientRecord & { agentName: string })[];
+  pending: boolean;
+  run: RunFn;
+}) {
+  return (
+    <Card>
+      <CardContent className="p-6">
+        <p className="flex items-center gap-2 font-bold text-institutional-900">
+          <Inbox className="size-4 text-brand-700" /> Demandes à valider
+          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">{items.length}</span>
+        </p>
+        <ul className="mt-4 space-y-2.5">
+          {items.map((r) => <DecideRow key={r.id} r={r} pending={pending} run={run} />)}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DecideRow({ r, pending, run }: { r: ClientRecord & { agentName: string }; pending: boolean; run: RunFn }) {
+  const [refusing, setRefusing] = useState(false);
+  const [reason, setReason] = useState("");
+  const meta = ABSENCE_MOTIF_MAP[r.motif];
+
+  return (
+    <li className="rounded-2xl border border-amber-100 bg-amber-50/40 p-3.5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-ink">{r.agentName}</p>
+          <p className="mt-0.5 text-sm text-slate-600">
+            <span className={cn("mr-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold", TONE_CHIP[meta?.tone ?? "neutral"])}>{meta?.label ?? r.motif}</span>
+            {fdate(r.startISO)} → {fdate(r.endISO)} · <b>{r.days} j</b>
+          </p>
+          {r.note && <p className="mt-1 text-xs text-slate-500">« {r.note} »</p>}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button size="sm" disabled={pending} onClick={() => run(() => decideAbsence({ id: r.id, decision: "APPROVE" }))}>
+            <Check className="size-4" /> Approuver
+          </Button>
+          <Button size="sm" variant="outline" disabled={pending} onClick={() => setRefusing((v) => !v)}>
+            <X className="size-4" /> Refuser
+          </Button>
+        </div>
+      </div>
+      {refusing && (
+        <div className="mt-3 flex flex-wrap items-end gap-2">
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <Label>Motif du refus (facultatif)</Label>
+            <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="ex. période chargée, effectif insuffisant…" />
+          </div>
+          <Button size="sm" variant="danger" disabled={pending}
+            onClick={() => run(() => decideAbsence({ id: r.id, decision: "REFUSE", note: reason || undefined }), () => { setRefusing(false); setReason(""); })}>
+            {pending ? <Loader2 className="size-4 animate-spin" /> : <X className="size-4" />} Confirmer le refus
+          </Button>
+        </div>
+      )}
+    </li>
   );
 }
 
@@ -166,6 +244,77 @@ function PolicyCard({ policy, canManage, pending, onSave }: {
   );
 }
 
+/** Formulaire de DEMANDE d'absence par l'agent (pour lui-même). */
+function RequestForm({ quota, pending, onSubmit }: {
+  quota: number;
+  pending: boolean;
+  onSubmit: (input: { motif: string; startDate: string; endDate: string; days: number; note?: string }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [motif, setMotif] = useState(ABSENCE_MOTIFS[0].value);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [daysTouched, setDaysTouched] = useState(false);
+  const [days, setDays] = useState("");
+  const [note, setNote] = useState("");
+
+  const auto = useMemo(() => (startDate && endDate ? daysInclusive(startDate, endDate) : 0), [startDate, endDate]);
+  const effectiveDays = daysTouched ? days : auto ? String(auto) : "";
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!startDate || !endDate) return;
+    onSubmit({ motif, startDate, endDate, days: Number(effectiveDays || auto), note: note || undefined });
+    setStartDate(""); setEndDate(""); setDays(""); setDaysTouched(false); setNote(""); setOpen(false);
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between gap-3">
+          <p className="flex items-center gap-2 font-bold text-institutional-900"><Send className="size-4 text-brand-700" /> Demander une absence</p>
+          {!open && <Button size="sm" onClick={() => setOpen(true)}><Plus className="size-4" /> Nouvelle demande</Button>}
+        </div>
+        {open && (
+          <form onSubmit={submit} className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Motif</Label>
+              <Select value={motif} onChange={(e) => setMotif(e.target.value)}>
+                {ABSENCE_MOTIFS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Du</Label>
+              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Au</Label>
+              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Nombre de jours {auto > 0 && <span className="font-normal text-slate-400">(auto&nbsp;: {auto})</span>}</Label>
+              <Input type="number" min={1} max={366} value={effectiveDays}
+                onChange={(e) => { setDaysTouched(true); setDays(e.target.value); }} placeholder={auto ? String(auto) : "—"} required />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Note au supérieur <span className="font-normal text-slate-400">(facultatif)</span></Label>
+              <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Précision éventuelle…" />
+            </div>
+            <div className="flex items-end gap-2 sm:col-span-2">
+              <Button type="submit" disabled={pending}>
+                {pending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />} Envoyer au supérieur
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={pending}>Annuler</Button>
+              <p className="ml-auto text-xs text-slate-400">Quota annuel&nbsp;: {quota} j. La demande sera soumise à votre supérieur.</p>
+            </div>
+          </form>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Enregistrement DIRECT par le supérieur (validé d'office). */
 function RecordForm({ agents, quota, pending, onSubmit }: {
   agents: { id: string; name: string }[];
   quota: number;
@@ -194,8 +343,8 @@ function RecordForm({ agents, quota, pending, onSubmit }: {
     <Card>
       <CardContent className="p-6">
         <div className="flex items-center justify-between gap-3">
-          <p className="flex items-center gap-2 font-bold text-institutional-900"><CalendarOff className="size-4 text-brand-700" /> Comptabiliser une absence</p>
-          {!open && <Button size="sm" onClick={() => setOpen(true)}><Plus className="size-4" /> Ajouter</Button>}
+          <p className="flex items-center gap-2 font-bold text-institutional-900"><CalendarOff className="size-4 text-brand-700" /> Comptabiliser directement <span className="text-xs font-normal text-slate-400">(validée d'office)</span></p>
+          {!open && <Button size="sm" variant="outline" onClick={() => setOpen(true)}><Plus className="size-4" /> Ajouter</Button>}
         </div>
         {open && (
           <form onSubmit={submit} className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -222,8 +371,7 @@ function RecordForm({ agents, quota, pending, onSubmit }: {
             <div className="space-y-1.5">
               <Label>Nombre de jours {auto > 0 && <span className="font-normal text-slate-400">(auto&nbsp;: {auto})</span>}</Label>
               <Input type="number" min={1} max={366} value={effectiveDays}
-                onChange={(e) => { setDaysTouched(true); setDays(e.target.value); }}
-                placeholder={auto ? String(auto) : "—"} required />
+                onChange={(e) => { setDaysTouched(true); setDays(e.target.value); }} placeholder={auto ? String(auto) : "—"} required />
             </div>
             <div className="flex items-end gap-2">
               <Button type="submit" disabled={pending}>
@@ -239,10 +387,9 @@ function RecordForm({ agents, quota, pending, onSubmit }: {
   );
 }
 
-function AgentCard({ agent, quota, threshold, pending, onDelete }: {
+function AgentCard({ agent, quota, pending, onDelete }: {
   agent: ClientAgent;
   quota: number;
-  threshold: number;
   pending: boolean;
   onDelete: (id: string) => void;
 }) {
@@ -250,6 +397,7 @@ function AgentCard({ agent, quota, threshold, pending, onDelete }: {
   const s = agent.summary;
   const barTone = s.overQuota ? "bg-danger-500" : s.overThreshold ? "bg-gold-400" : "bg-brand-500";
   const pct = Math.min(s.percent, 100);
+  const pendingCount = agent.records.filter((r) => r.status === "PENDING").length;
 
   return (
     <Card>
@@ -262,17 +410,20 @@ function AgentCard({ agent, quota, threshold, pending, onDelete }: {
               {agent.context && <p className="text-xs text-slate-400">{agent.context}</p>}
             </div>
           </div>
-          {s.overQuota ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-danger-600"><ShieldAlert className="size-3.5" /> Quota dépassé</span>
-          ) : s.overThreshold ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700"><AlertTriangle className="size-3.5" /> Seuil atteint</span>
-          ) : null}
+          <div className="flex items-center gap-2">
+            {pendingCount > 0 && <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">{pendingCount} en attente</span>}
+            {s.overQuota ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-danger-600"><ShieldAlert className="size-3.5" /> Quota dépassé</span>
+            ) : s.overThreshold ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700"><AlertTriangle className="size-3.5" /> Seuil atteint</span>
+            ) : null}
+          </div>
         </div>
 
-        {/* Ratio sur le congé annuel */}
+        {/* Ratio (jours approuvés) sur le congé annuel */}
         <div className="mt-4">
           <div className="flex items-end justify-between text-sm">
-            <span className="font-medium text-slate-500">Cumul d'absences</span>
+            <span className="font-medium text-slate-500">Cumul d'absences approuvées</span>
             <span className="font-semibold text-institutional-900">{s.total} / {quota} j <span className="font-normal text-slate-400">· {s.percent}%</span></span>
           </div>
           <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-slate-100">
@@ -280,35 +431,39 @@ function AgentCard({ agent, quota, threshold, pending, onDelete }: {
           </div>
         </div>
 
-        {/* Diagramme des jours par motif */}
         {s.total > 0 ? (
           <div className="mt-4">
-            <p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">Jours d'absence par motif</p>
+            <p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">Jours d'absence par motif (approuvés)</p>
             <MotifBarChart byMotif={s.byMotif} />
           </div>
         ) : (
-          <p className="mt-3 text-sm text-slate-400">Aucune absence enregistrée sur l'année.</p>
+          <p className="mt-3 text-sm text-slate-400">Aucune absence approuvée sur l'année.</p>
         )}
 
-        {/* Liste des enregistrements */}
+        {/* Historique des demandes / enregistrements */}
         {agent.records.length > 0 && (
           <div className="mt-4">
             <button type="button" onClick={() => setOpen((o) => !o)} className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-800">
-              <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} /> {agent.records.length} enregistrement{agent.records.length > 1 ? "s" : ""}
+              <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} /> {agent.records.length} demande{agent.records.length > 1 ? "s" : ""} / enregistrement{agent.records.length > 1 ? "s" : ""}
             </button>
             {open && (
               <ul className="mt-2 space-y-2">
                 {agent.records.map((r) => {
                   const meta = ABSENCE_MOTIF_MAP[r.motif];
+                  const canCancel = agent.isSelf && r.status === "PENDING";
                   return (
                     <li key={r.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 p-3">
                       <div className="min-w-0">
-                        <span className={cn("inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold", TONE_CHIP[meta?.tone ?? "neutral"])}>{meta?.label ?? r.motif}</span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={cn("inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold", TONE_CHIP[meta?.tone ?? "neutral"])}>{meta?.label ?? r.motif}</span>
+                          <StatusPill status={r.status} />
+                        </div>
                         <p className="mt-1 text-sm text-ink">{fdate(r.startISO)} → {fdate(r.endISO)} · <b>{r.days} j</b></p>
-                        {r.note && <p className="text-xs text-slate-400">{r.note}</p>}
+                        {r.note && <p className="text-xs text-slate-400">« {r.note} »</p>}
+                        {r.status === "REFUSED" && r.decisionNote && <p className="text-xs text-danger-600">Refus : {r.decisionNote}</p>}
                       </div>
-                      {agent.canEdit && (
-                        <button type="button" onClick={() => onDelete(r.id)} disabled={pending} aria-label="Supprimer"
+                      {(agent.canEdit || canCancel) && (
+                        <button type="button" onClick={() => onDelete(r.id)} disabled={pending} aria-label={canCancel ? "Annuler la demande" : "Supprimer"}
                           className="flex size-8 shrink-0 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-red-50 hover:text-danger-600">
                           <Trash2 className="size-4" />
                         </button>

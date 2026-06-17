@@ -9,6 +9,7 @@ import {
   ShieldAlert,
   GraduationCap,
   ArrowRight,
+  CalendarOff,
 } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -23,7 +24,7 @@ import { StatusDonut } from "@/components/dashboard/status-donut";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ACTIVITY_STATUS_MAP, VERIFICATION_LEVEL, metaOf, type Tone } from "@/lib/enums";
+import { ACTIVITY_STATUS_MAP, ABSENCE_STATUS_MAP, ABSENCE_MOTIF_MAP, VERIFICATION_LEVEL, metaOf, type Tone } from "@/lib/enums";
 import { formatDate, formatNumber, initials } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Tableau de bord" };
@@ -108,6 +109,17 @@ export default async function DashboardPage() {
     }
   }
 
+  // Mes demandes d'absence + demandes à valider (supérieur).
+  const [myAbsences, absenceToDecide] = await Promise.all([
+    prisma.absenceRecord.findMany({
+      where: { agentId: user.id },
+      orderBy: { createdAt: "desc" },
+      take: 4,
+      select: { id: true, motif: true, status: true, startDate: true, endDate: true, days: true, decisionNote: true },
+    }),
+    prisma.absenceRecord.count({ where: { status: "PENDING", agent: { managerId: user.id } } }),
+  ]);
+
   return (
     <div className="space-y-7">
       <PageHeader
@@ -122,6 +134,46 @@ export default async function DashboardPage() {
 
       {/* Parrainage / agent commercial : lien d'invitation (code promo) — en tête de page */}
       <ReferralCard />
+
+      {/* Mes demandes d'absence (décisions reçues) + demandes à valider */}
+      {(myAbsences.length > 0 || absenceToDecide > 0) && (
+        <Card>
+          <CardHeader className="flex-row items-center justify-between">
+            <div>
+              <CardTitle>Mes demandes d'absence</CardTitle>
+              <CardDescription>Statut de vos autorisations</CardDescription>
+            </div>
+            <Link href="/absences" className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:underline">
+              {absenceToDecide > 0 ? (
+                <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-700">{absenceToDecide} à valider</span>
+              ) : "Voir tout"}
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {myAbsences.length ? (
+              <ul className="divide-y divide-slate-100">
+                {myAbsences.map((r) => (
+                  <li key={r.id} className="flex items-center gap-3 py-3">
+                    <span className="flex size-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500"><CalendarOff className="size-4" /></span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-ink">{metaOf(ABSENCE_MOTIF_MAP, r.motif).label} · {r.days} j</p>
+                      <p className="text-xs text-slate-400">
+                        {formatDate(r.startDate)} → {formatDate(r.endDate)}{r.status === "REFUSED" && r.decisionNote ? ` · Refus : ${r.decisionNote}` : ""}
+                      </p>
+                    </div>
+                    <StatusBadge value={r.status} map={ABSENCE_STATUS_MAP} />
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="py-3 text-sm text-slate-500">
+                {absenceToDecide} demande(s) d'absence en attente de votre validation.{" "}
+                <Link href="/absences" className="font-semibold text-brand-700 hover:underline">Traiter →</Link>
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* KPI */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
