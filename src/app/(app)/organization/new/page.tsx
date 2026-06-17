@@ -14,7 +14,7 @@ export default async function NewOrganizationPage() {
   const user = await requireUser();
   if (!hasPermission(user, "organization:manage")) redirect("/organization");
 
-  const countries = await prisma.country.findMany({ where: { isActive: true }, orderBy: { order: "asc" }, select: { id: true, name: true } });
+  const countries = await prisma.country.findMany({ where: { isActive: true }, orderBy: { order: "asc" }, select: { id: true, name: true, code: true, namespace: true } });
 
   return (
     <div className="space-y-6">
