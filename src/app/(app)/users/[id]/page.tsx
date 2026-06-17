@@ -19,7 +19,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
   if (!hasPermission(me, "user:manage")) redirect("/users");
   const { id } = await params;
 
-  const [target, roles, organizations, structures, countries, ministries, permissions] = await Promise.all([
+  const [target, roles, organizations, structures, countries, ministries, permissions, managerRows] = await Promise.all([
     prisma.user.findUnique({ where: { id }, include: { roles: { include: { role: true } }, directPermissions: { select: { key: true } } } }),
     prisma.role.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, scope: true } }),
     prisma.organization.findMany({ where: { deletedAt: null }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
@@ -27,9 +27,11 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
     prisma.country.findMany({ where: { isActive: true }, orderBy: { order: "asc" }, select: { id: true, name: true, code: true } }),
     prisma.ministry.findMany({ orderBy: [{ country: { order: "asc" } }, { order: "asc" }, { name: "asc" }], select: { id: true, name: true } }),
     prisma.permission.findMany({ orderBy: [{ module: "asc" }, { action: "asc" }], select: { key: true, module: true, action: true, description: true } }),
+    prisma.user.findMany({ where: { deletedAt: null, isActive: true, id: { not: id } }, orderBy: [{ lastName: "asc" }, { firstName: "asc" }], select: { id: true, firstName: true, lastName: true } }),
   ]);
 
   if (!target || target.deletedAt) notFound();
+  const managers = managerRows.map((m) => ({ id: m.id, name: `${m.firstName} ${m.lastName}`.trim() }));
 
   return (
     <div className="space-y-6">
@@ -55,6 +57,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                 structures={structures}
                 countries={countries}
                 ministries={ministries}
+                managers={managers}
                 initial={{
                   id: target.id,
                   firstName: target.firstName,
@@ -65,6 +68,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                   structureId: target.structureId,
                   countryId: target.countryId,
                   ministryId: target.ministryId,
+                  managerId: target.managerId,
                   roleIds: target.roles.map((r) => r.roleId),
                 }}
               />

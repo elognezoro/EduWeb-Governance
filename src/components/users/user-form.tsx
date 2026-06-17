@@ -30,6 +30,7 @@ export interface UserFormInitial {
   structureId: string | null;
   countryId: string | null;
   ministryId: string | null;
+  managerId: string | null;
   roleIds: string[];
 }
 
@@ -39,6 +40,7 @@ export function UserForm({
   structures,
   countries,
   ministries,
+  managers,
   initial,
 }: {
   roles: RoleOpt[];
@@ -46,6 +48,7 @@ export function UserForm({
   structures: Opt[];
   countries: { id: string; name: string; code: string }[];
   ministries: Opt[];
+  managers: Opt[];
   initial?: UserFormInitial;
 }) {
   const router = useRouter();
@@ -61,6 +64,7 @@ export function UserForm({
   const [structureId, setStructureId] = useState(initial?.structureId ?? "");
   const [countryId, setCountryId] = useState(initial?.countryId ?? "");
   const [ministryId, setMinistryId] = useState(initial?.ministryId ?? "");
+  const [managerId, setManagerId] = useState(initial?.managerId ?? "");
   const [roleIds, setRoleIds] = useState<Set<string>>(new Set(initial?.roleIds ?? []));
 
   function toggleRole(id: string) {
@@ -86,6 +90,7 @@ export function UserForm({
       structureId: structureId || undefined,
       countryId: countryId || undefined,
       ministryId: ministryId || undefined,
+      managerId: managerId || undefined,
       roleIds: [...roleIds],
       password: initial ? undefined : password,
     };
@@ -149,6 +154,18 @@ export function UserForm({
             emptyLabel="—"
             placeholder="— Sélectionner un ministère —"
             searchPlaceholder="Rechercher un ministère…"
+          />
+        </div>
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="mgr">Supérieur hiérarchique <span className="font-normal text-slate-400">(pour le suivi des absences)</span></Label>
+          <SearchSelect
+            id="mgr"
+            value={managerId}
+            onChange={setManagerId}
+            options={managers.map((o) => ({ value: o.id, label: o.name }))}
+            emptyLabel="—"
+            placeholder="— Aucun supérieur —"
+            searchPlaceholder="Rechercher un agent…"
           />
         </div>
       </div>

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { ABSENCE_MOTIFS, ABSENCE_MOTIF_MAP } from "@/lib/enums";
+import { MotifBarChart } from "@/components/absences/motif-bar-chart";
 import { recordAbsence, deleteAbsence, saveAbsencePolicy } from "@/app/(app)/absences/actions";
 
 const TONE_CHIP: Record<string, string> = {
@@ -279,17 +280,15 @@ function AgentCard({ agent, quota, threshold, pending, onDelete }: {
           </div>
         </div>
 
-        {/* Détail par motif */}
-        <div className="mt-3 flex flex-wrap gap-2">
-          {ABSENCE_MOTIFS.map((m) => {
-            const v = s.byMotif[m.value] ?? 0;
-            return (
-              <span key={m.value} className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium", v > 0 ? TONE_CHIP[m.tone] : "bg-slate-50 text-slate-400")}>
-                {m.label} : <b>{v} j</b>
-              </span>
-            );
-          })}
-        </div>
+        {/* Diagramme des jours par motif */}
+        {s.total > 0 ? (
+          <div className="mt-4">
+            <p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">Jours d'absence par motif</p>
+            <MotifBarChart byMotif={s.byMotif} />
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-slate-400">Aucune absence enregistrée sur l'année.</p>
+        )}
 
         {/* Liste des enregistrements */}
         {agent.records.length > 0 && (

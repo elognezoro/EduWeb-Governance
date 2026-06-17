@@ -19,6 +19,7 @@ const baseSchema = z.object({
   structureId: z.string().optional(),
   countryId: z.string().optional(),
   ministryId: z.string().optional(),
+  managerId: z.string().optional(),
   roleIds: z.array(z.string()).min(1, "Sélectionnez au moins un rôle."),
 });
 
@@ -50,6 +51,13 @@ export async function createUser(input: UserInput): Promise<ActionResult> {
   const exists = await prisma.user.findUnique({ where: { email } });
   if (exists) return { ok: false, error: "Un utilisateur avec cet e-mail existe déjà." };
 
+  // Supérieur : explicite, sinon pré-rempli depuis le responsable de la structure.
+  let managerId = clean(d.managerId);
+  if (!managerId && clean(d.structureId)) {
+    const str = await prisma.structure.findUnique({ where: { id: d.structureId! }, select: { managerId: true } });
+    managerId = str?.managerId ?? undefined;
+  }
+
   const created = await prisma.user.create({
     data: {
       email,
@@ -61,6 +69,7 @@ export async function createUser(input: UserInput): Promise<ActionResult> {
       structureId: clean(d.structureId),
       countryId: clean(d.countryId),
       ministryId: clean(d.ministryId),
+      managerId,
       roles: { create: d.roleIds.map((roleId) => ({ roleId })) },
     },
   });
@@ -87,6 +96,9 @@ export async function updateUser(id: string, input: UserInput): Promise<ActionRe
     if (dup) return { ok: false, error: "Cet e-mail est déjà utilisé." };
   }
 
+  const managerId = clean(d.managerId) ?? null;
+  if (managerId === id) return { ok: false, error: "Un agent ne peut pas être son propre supérieur hiérarchique." };
+
   await prisma.user.update({
     where: { id },
     data: {
@@ -98,6 +110,7 @@ export async function updateUser(id: string, input: UserInput): Promise<ActionRe
       structureId: clean(d.structureId),
       countryId: clean(d.countryId),
       ministryId: clean(d.ministryId),
+      managerId,
       roles: { deleteMany: {}, create: d.roleIds.map((roleId) => ({ roleId })) },
     },
   });
