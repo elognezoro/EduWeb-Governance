@@ -87,6 +87,7 @@ model User {
   appointments            Appointment[]
   absencesAsAgent         AbsenceRecord[]          @relation("AgentAbsences")
   absencesRecorded        AbsenceRecord[]          @relation("AbsenceRecorder")
+  passwordResetTokens     PasswordResetToken[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -106,6 +107,19 @@ model Session {
   userAgent    String?
   expiresAt    DateTime
   createdAt    DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Jeton de réinitialisation de mot de passe (usage unique, haché, expirant).
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique // SHA-256 du jeton (le jeton brut n'est jamais stocké)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([userId])
 }

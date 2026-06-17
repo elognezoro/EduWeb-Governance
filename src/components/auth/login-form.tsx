@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LogIn, Loader2, AlertCircle } from "lucide-react";
 import { Input, Label } from "@/components/ui/input";
@@ -81,6 +82,11 @@ export function LoginForm() {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
+        <div className="flex justify-end">
+          <Link href="/mot-de-passe-oublie" className="text-sm font-semibold text-brand-700 hover:underline">
+            Mot de passe oublié ?
+          </Link>
+        </div>
       </div>
 
       <Button type="submit" size="lg" className="w-full" disabled={loading}>
