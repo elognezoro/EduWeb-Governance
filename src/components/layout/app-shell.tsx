@@ -2,6 +2,7 @@ import * as React from "react";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { MobileTabBar } from "./mobile-tabbar";
+import { MobileReminders } from "@/components/mobile/mobile-reminders";
 import type { CountryOption, SubdivisionOption } from "./geo-filter";
 
 export function AppShell({
@@ -39,6 +40,8 @@ export function AppShell({
       </div>
       {/* Barre d'onglets mobile (sous lg) */}
       <MobileTabBar />
+      {/* Rappels locaux sur la coque mobile native (no-op sur le web) */}
+      <MobileReminders />
     </div>
   );
 }
