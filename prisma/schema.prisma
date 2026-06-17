@@ -31,6 +31,8 @@ model User {
   phone        String?
   avatarUrl    String?
   locale       String    @default("fr")
+  // Type de profil (multi-profil) : perso | ecole | entreprise | asso.
+  profileType  String    @default("perso")
   isActive     Boolean   @default(true)
   lastLoginAt  DateTime?
 

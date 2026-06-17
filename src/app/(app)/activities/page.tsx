@@ -5,6 +5,7 @@ import { requireUser, hasPermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSelectedCountryCode } from "@/lib/country";
 import { PageHeader } from "@/components/layout/page-header";
+import { profileMeta } from "@/lib/profile";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { buttonVariants } from "@/components/ui/button";
@@ -56,8 +57,8 @@ export default async function ActivitiesPage({
   return (
     <div className="space-y-7">
       <PageHeader
-        title="Activités"
-        description={canReadAll ? "Activités de votre organisation." : "Vos activités."}
+        title={profileMeta(user.profileType).activityTitle}
+        description={canReadAll ? "Activités de votre organisation." : profileMeta(user.profileType).activityDesc}
         icon={ClipboardList}
         actions={
           <Link href="/activities/new" className={cn(buttonVariants({ variant: "primary", size: "sm" }))}>

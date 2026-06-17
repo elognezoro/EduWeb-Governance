@@ -4,6 +4,7 @@ import { ClipboardCheck, Download, CalendarClock, ListChecks, CheckCircle2, Circ
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getBilan, normalizePeriode, type Periode } from "@/lib/bilan";
+import { profileMeta } from "@/lib/profile";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
@@ -21,7 +22,8 @@ const fmt = new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short", h
 
 export default async function BilanPage({ searchParams }: { searchParams: Promise<{ periode?: string }> }) {
   const user = await requireUser();
-  const periode = normalizePeriode((await searchParams).periode);
+  const sp = await searchParams;
+  const periode = sp.periode ? normalizePeriode(sp.periode) : profileMeta(user.profileType).defaultPeriode;
   const b = await getBilan(prisma, user.id, periode);
 
   const faits = b.items.filter((i) => i.done);

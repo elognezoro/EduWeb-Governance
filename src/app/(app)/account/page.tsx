@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import { UserCircle, Mail, Building2, Globe2, ShieldCheck } from "lucide-react";
 import { requireUser, fullName, roleKeys } from "@/lib/auth";
 import { PageHeader } from "@/components/layout/page-header";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Flag } from "@/components/ui/flag";
 import { FileUpload } from "@/components/ui/file-upload";
+import { ProfileTypeSelector } from "@/components/account/profile-type-selector";
+import { profileMeta } from "@/lib/profile";
 import { initials } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Mon profil" };
@@ -12,6 +14,7 @@ export const metadata: Metadata = { title: "Mon profil" };
 export default async function AccountPage() {
   const user = await requireUser();
   const roles = roleKeys(user);
+  const pm = profileMeta(user.profileType);
 
   const rows = [
     { icon: Mail, label: "E-mail", value: user.email },
@@ -44,6 +47,18 @@ export default async function AccountPage() {
             </div>
           </div>
           <FileUpload purpose="avatar" accept="image/*" label="Changer la photo" />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Type de profil</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-slate-500">
+            L'interface s'adapte à votre usage. Profil actif : <strong className="text-ink">{pm.emoji} {pm.label}</strong>.
+          </p>
+          <ProfileTypeSelector current={user.profileType} />
         </CardContent>
       </Card>
 
