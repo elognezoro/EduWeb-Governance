@@ -160,6 +160,7 @@ export const ABSENCE_MOTIFS: OptionMeta[] = [
   { value: "PERSONAL", label: "Affaires personnelles", tone: "info", description: "Demande de permission pour affaires personnelles." },
   { value: "STATUTORY", label: "Congé réglementaire", tone: "brand", description: "Congé annuel réglementaire." },
   { value: "TRAINING", label: "Formation", tone: "gold", description: "Absence pour formation." },
+  { value: "MEDICAL", label: "Raison médicale", tone: "danger", description: "Maladie, soins ou hospitalisation." },
   { value: "FORCE_MAJEURE", label: "Force majeure institutionnelle", tone: "warning", description: "Travaux de réhabilitation, fermeture institutionnelle, etc." },
 ];
 export const ABSENCE_MOTIF_MAP = indexBy(ABSENCE_MOTIFS);

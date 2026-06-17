@@ -7,12 +7,14 @@ const COLOR: Record<string, string> = {
   PERSONAL: "#2563eb",
   STATUTORY: "#16a34a",
   TRAINING: "#ca8a04",
+  MEDICAL: "#dc2626",
   FORCE_MAJEURE: "#d97706",
 };
 const SHORT: Record<string, string> = {
   PERSONAL: "Aff. perso.",
   STATUTORY: "Congé régl.",
   TRAINING: "Formation",
+  MEDICAL: "Médical",
   FORCE_MAJEURE: "Force maj.",
 };
 
