@@ -4,6 +4,7 @@ import {
   CalendarClock,
   ClipboardCheck,
   Gauge,
+  Award,
   CalendarOff,
   Building2,
   Users,
@@ -42,6 +43,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: "Rendez-vous", href: "/rendez-vous", icon: CalendarClock },
       { label: "Bilan", href: "/bilan", icon: ClipboardCheck },
       { label: "Évaluation", href: "/evaluation", icon: Gauge },
+      { label: "Distinctions", href: "/distinctions", icon: Award },
     ],
   },
   {

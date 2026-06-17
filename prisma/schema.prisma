@@ -31,6 +31,8 @@ model User {
   phone        String?
   avatarUrl    String?
   locale       String    @default("fr")
+  // Genre : M | F | null (non précisé) — utilisé pour les messages de distinction.
+  gender       String?
   // Type de profil (multi-profil) : perso | ecole | entreprise | asso.
   profileType  String    @default("perso")
   // Paramètres : période de bilan par défaut (null = défaut du profil) + rappels.

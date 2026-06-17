@@ -165,6 +165,12 @@ export const ABSENCE_MOTIFS: OptionMeta[] = [
 ];
 export const ABSENCE_MOTIF_MAP = indexBy(ABSENCE_MOTIFS);
 
+// ── Genre (pour les messages de distinction) ────────────────────────────────
+export const GENDER_OPTIONS: { value: string; label: string }[] = [
+  { value: "M", label: "Homme" },
+  { value: "F", label: "Femme" },
+];
+
 // ── Types de structures ─────────────────────────────────────────────────────
 export const STRUCTURE_TYPES: { value: string; label: string }[] = [
   { value: "DIRECTION", label: "Direction" },

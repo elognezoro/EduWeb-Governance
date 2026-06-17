@@ -20,8 +20,13 @@ const baseSchema = z.object({
   countryId: z.string().optional(),
   ministryId: z.string().optional(),
   managerId: z.string().optional(),
+  gender: z.string().optional(),
   roleIds: z.array(z.string()).min(1, "Sélectionnez au moins un rôle."),
 });
+
+function cleanGender(v?: string): "M" | "F" | undefined {
+  return v === "M" || v === "F" ? v : undefined;
+}
 
 export type UserInput = z.infer<typeof baseSchema> & { password?: string };
 
@@ -51,6 +56,9 @@ export async function createUser(input: UserInput): Promise<ActionResult> {
   const exists = await prisma.user.findUnique({ where: { email } });
   if (exists) return { ok: false, error: "Un utilisateur avec cet e-mail existe déjà." };
 
+  const gender = cleanGender(d.gender);
+  if (!gender) return { ok: false, error: "Le genre est requis (Homme ou Femme)." };
+
   // Supérieur : explicite, sinon pré-rempli depuis le responsable de la structure.
   let managerId = clean(d.managerId);
   if (!managerId && clean(d.structureId)) {
@@ -70,6 +78,7 @@ export async function createUser(input: UserInput): Promise<ActionResult> {
       countryId: clean(d.countryId),
       ministryId: clean(d.ministryId),
       managerId,
+      gender,
       roles: { create: d.roleIds.map((roleId) => ({ roleId })) },
     },
   });
@@ -96,6 +105,9 @@ export async function updateUser(id: string, input: UserInput): Promise<ActionRe
     if (dup) return { ok: false, error: "Cet e-mail est déjà utilisé." };
   }
 
+  const gender = cleanGender(d.gender);
+  if (!gender) return { ok: false, error: "Le genre est requis (Homme ou Femme)." };
+
   const managerId = clean(d.managerId) ?? null;
   if (managerId === id) return { ok: false, error: "Un agent ne peut pas être son propre supérieur hiérarchique." };
 
@@ -111,6 +123,7 @@ export async function updateUser(id: string, input: UserInput): Promise<ActionRe
       countryId: clean(d.countryId),
       ministryId: clean(d.ministryId),
       managerId,
+      gender,
       roles: { deleteMany: {}, create: d.roleIds.map((roleId) => ({ roleId })) },
     },
   });

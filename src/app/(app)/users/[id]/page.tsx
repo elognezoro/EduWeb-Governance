@@ -69,6 +69,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                   countryId: target.countryId,
                   ministryId: target.ministryId,
                   managerId: target.managerId,
+                  gender: target.gender,
                   roleIds: target.roles.map((r) => r.roleId),
                 }}
               />

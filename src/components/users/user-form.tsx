@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/select";
 import { SearchSelect } from "@/components/ui/search-select";
 import { CountrySelect } from "@/components/ui/country-select";
 import { Button } from "@/components/ui/button";
+import { GENDER_OPTIONS } from "@/lib/enums";
 import { createUser, updateUser, type UserInput } from "@/app/(app)/users/actions";
 
 interface Opt { id: string; name: string }
@@ -31,6 +32,7 @@ export interface UserFormInitial {
   countryId: string | null;
   ministryId: string | null;
   managerId: string | null;
+  gender: string | null;
   roleIds: string[];
 }
 
@@ -59,6 +61,7 @@ export function UserForm({
   const [lastName, setLastName] = useState(initial?.lastName ?? "");
   const [email, setEmail] = useState(initial?.email ?? "");
   const [phone, setPhone] = useState(initial?.phone ?? "");
+  const [gender, setGender] = useState(initial?.gender ?? "");
   const [password, setPassword] = useState("");
   const [organizationId, setOrganizationId] = useState(initial?.organizationId ?? "");
   const [structureId, setStructureId] = useState(initial?.structureId ?? "");
@@ -91,6 +94,7 @@ export function UserForm({
       countryId: countryId || undefined,
       ministryId: ministryId || undefined,
       managerId: managerId || undefined,
+      gender: gender || undefined,
       roleIds: [...roleIds],
       password: initial ? undefined : password,
     };
@@ -117,6 +121,13 @@ export function UserForm({
         <div className="space-y-2"><Label htmlFor="ln">Nom *</Label><Input id="ln" value={lastName} onChange={(e) => setLastName(e.target.value)} required /></div>
         <div className="space-y-2"><Label htmlFor="em">E-mail *</Label><Input id="em" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
         <div className="space-y-2"><Label htmlFor="ph">Téléphone</Label><Input id="ph" value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
+        <div className="space-y-2">
+          <Label htmlFor="gender">Genre *</Label>
+          <Select id="gender" value={gender} onChange={(e) => setGender(e.target.value)} required>
+            <option value="" disabled>— Sélectionner —</option>
+            {GENDER_OPTIONS.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
+          </Select>
+        </div>
         {!initial && (
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="pw">Mot de passe initial * <span className="font-normal text-slate-400">(min. 8 caractères)</span></Label>
