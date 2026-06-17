@@ -6,17 +6,22 @@ import { Loader2, AlertCircle, Save } from "lucide-react";
 import { Input, Label } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { CountrySelect } from "@/components/ui/country-select";
+import { SearchSelect } from "@/components/ui/search-select";
 import { Button } from "@/components/ui/button";
 import { ORGANIZATION_TYPES } from "@/lib/enums";
 import { createOrganization } from "@/app/(app)/organization/actions";
 
-export function OrganizationForm({ countries }: { countries: { id: string; name: string; code: string; namespace?: string | null }[] }) {
+export function OrganizationForm({ countries, ministries }: {
+  countries: { id: string; name: string; code: string; namespace?: string | null }[];
+  ministries: { id: string; name: string }[];
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [type, setType] = useState("");
   const [countryId, setCountryId] = useState("");
+  const [pickedMinistry, setPickedMinistry] = useState("");
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,6 +39,25 @@ export function OrganizationForm({ countries }: { countries: { id: string; name:
           <AlertCircle className="size-4 shrink-0" /> {error}
         </div>
       )}
+      {ministries.length > 0 && (
+        <div className="space-y-2">
+          <Label htmlFor="min">Ministère du gouvernement actuel <span className="font-normal text-slate-400">(Côte d'Ivoire — pré-remplit le nom)</span></Label>
+          <SearchSelect
+            id="min"
+            value={pickedMinistry}
+            onChange={(v) => {
+              setPickedMinistry(v);
+              const m = ministries.find((x) => x.id === v);
+              if (m) { setName(m.name); setType("MINISTRY"); }
+            }}
+            options={ministries.map((m) => ({ value: m.id, label: m.name }))}
+            emptyLabel="— Saisie libre —"
+            placeholder="— Choisir un ministère —"
+            searchPlaceholder="Rechercher un ministère…"
+          />
+        </div>
+      )}
+
       <div className="space-y-2">
         <Label htmlFor="name">Nom de l'organisation *</Label>
         <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex. Ministère de l'Éducation nationale" required />
