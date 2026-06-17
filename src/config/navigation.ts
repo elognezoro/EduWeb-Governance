@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   CalendarClock,
   ClipboardCheck,
+  Gauge,
   Building2,
   Users,
   FileText,
@@ -38,6 +39,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: "Tableau de bord", href: "/dashboard", icon: LayoutDashboard },
       { label: "Rendez-vous", href: "/rendez-vous", icon: CalendarClock },
       { label: "Bilan", href: "/bilan", icon: ClipboardCheck },
+      { label: "Évaluation", href: "/evaluation", icon: Gauge },
     ],
   },
   {
