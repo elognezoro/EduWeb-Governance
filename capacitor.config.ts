@@ -7,10 +7,10 @@ import type { CapacitorConfig } from "@capacitor/cli";
  * peut pas être exportée en statique. La coque native charge donc le site
  * déployé via `server.url`, et ajoute les notifications locales (rappels RDV).
  *
- * ⚠️ Mets ton domaine de production ci-dessous (ou définis CAP_SERVER_URL
- *    avant de lancer `npx cap sync`). Exemple : "https://app.eduweb.ci".
+ * URL de production de l'app (override possible via CAP_SERVER_URL avant
+ * `npx cap sync`).
  */
-const PROD_URL = process.env.CAP_SERVER_URL ?? "https://CHANGE-MOI.exemple";
+const PROD_URL = process.env.CAP_SERVER_URL ?? "https://governance.eduweb.ci";
 
 const config: CapacitorConfig = {
   appId: "ci.eduweb.governance",

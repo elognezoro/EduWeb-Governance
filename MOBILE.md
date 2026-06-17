@@ -20,17 +20,14 @@ ignorés dans un navigateur de bureau.
   Studio) et un **SDK Android** installé.
 - Un téléphone Android (câble USB, débogage USB activé) ou un émulateur.
 
-## 2. Configurer l'URL de production
+## 2. URL de production
 
-L'app doit charger **ton domaine**. Deux options :
-
-**Option A — éditer le fichier** : dans `capacitor.config.ts`, remplace
-`"https://CHANGE-MOI.exemple"` par ton domaine, ex. `"https://app.eduweb.ci"`.
-
-**Option B — variable d'environnement** (avant chaque `cap sync`) :
+Déjà configurée sur **`https://governance.eduweb.ci`** dans `capacitor.config.ts`.
+Pour pointer ailleurs (préprod, test), édite la ligne `PROD_URL` ou définis une
+variable d'environnement avant chaque `cap sync` :
 
 ```powershell
-$env:CAP_SERVER_URL = "https://app.eduweb.ci"
+$env:CAP_SERVER_URL = "https://governance.eduweb.ci"
 ```
 
 > L'URL doit être en **HTTPS** (le cookie de session est `Secure`). La connexion
