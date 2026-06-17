@@ -47,15 +47,28 @@ node_modules\.bin\cap sync android
 les plugins (dont LocalNotifications). Relance `cap sync android` après tout
 changement de `capacitor.config.ts` ou d'URL.
 
-## 4. (Optionnel) Icône & écran de démarrage
+## 4. Icône & écran de démarrage
 
-À partir du logo (`Logo.png`) :
+Les sources sont **déjà générées** depuis `mobile/Logo.png` (l'emblème bouclier
+pour l'icône, le logo complet pour le splash) dans `assets/` :
+`icon-only.png`, `icon-foreground.png`, `icon-background.png`, `splash.png`.
+Une silhouette blanche pour les notifications est dans `mobile/ic_stat_icon.png`.
+
+Après `cap add android`, **injecte icônes + splash** dans le projet Android :
 
 ```powershell
-npm i -D @capacitor/assets
-# Placer un logo carré ≥1024px dans resources/icon.png, puis :
-node_modules\.bin\capacitor-assets generate --android
+npm run mobile:icons          # = capacitor-assets generate --android
 ```
+
+**Icône de notification** (silhouette blanche en barre d'état) — copie-la une fois :
+
+```powershell
+Copy-Item mobile\ic_stat_icon.png android\app\src\main\res\drawable\ic_stat_icon.png
+```
+
+> Si tu remplaces `mobile/Logo.png`, régénère les sources avec
+> `npm run mobile:assets`, puis relance `npm run mobile:icons`. La fenêtre de
+> recadrage du bouclier se règle via les variables `SHIELD_LEFT` / `SHIELD_W`.
 
 ## 5. Lancer / tester
 
