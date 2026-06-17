@@ -6,6 +6,7 @@ import { Award, User as UserIcon, Check, X, Megaphone } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { SpeakButton } from "@/components/distinctions/speak-button";
+import { PerformanceBadge } from "@/components/distinctions/performance-badge";
 
 export interface ClientQuarter {
   quarter: number;
@@ -74,8 +75,8 @@ export function DistinctionsClient({
             <Rule label="Affaires personnelles" hint={`< 20% du congé annuel (${quota} j)`} />
             <Rule label="Raison médicale" hint={`< 40% du congé annuel (${quota} j)`} />
           </div>
-          <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
-            <span className="inline-flex items-center gap-1.5"><Image src="/distinctions/shield.png" alt="Bouclier" width={18} height={18} className="rounded" /> Belle performance</span>
+          <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-400">
+            <span className="inline-flex items-center gap-2"><PerformanceBadge className="w-16 shrink-0" /> Belle performance</span>
             <span className="inline-flex items-center gap-1.5"><span className="text-base leading-none">{BAD_EMOJI}</span> Performance à redresser</span>
           </p>
         </CardContent>
@@ -102,14 +103,6 @@ function Rule({ label, hint }: { label: string; hint: string }) {
       <p className="font-semibold text-ink">{label}</p>
       <p className="text-xs text-slate-400">{hint}</p>
     </div>
-  );
-}
-
-function ShieldBadge({ size }: { size: number }) {
-  return (
-    <span className="inline-flex items-center justify-center rounded-2xl bg-white p-1 ring-1 ring-gold-200">
-      <Image src="/distinctions/shield.png" alt="Belle performance" width={size} height={size} />
-    </span>
   );
 }
 
@@ -165,6 +158,19 @@ function AgentCard({ agent }: { agent: ClientAgent }) {
             <Award className="size-4" /> {agent.goodCount} distinction{agent.goodCount > 1 ? "s" : ""}
           </span>
         </div>
+
+        {/* Distinction de belle performance (emblème + organigramme des agents) */}
+        {good && (
+          <div className="mt-4 flex items-center gap-4 rounded-2xl border border-gold-200 bg-gradient-to-r from-gold-50/70 to-white p-4">
+            <PerformanceBadge className="w-28 shrink-0 sm:w-32" />
+            <div>
+              <p className="text-sm font-extrabold text-institutional-900">Distinction de belle performance</p>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Décernée au titre du trimestre T{latest?.quarter}. Cumul : {agent.goodCount} distinction{agent.goodCount > 1 ? "s" : ""} cette année.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Distinctions par trimestre */}
         <div className="mt-4 flex gap-2">
