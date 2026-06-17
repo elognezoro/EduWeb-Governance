@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Building2, Plus, Users, Pencil, Network, MapPin } from "lucide-react";
+import { Building2, Plus, Users, Pencil, Network, MapPin, Landmark } from "lucide-react";
 import { requireUser, hasPermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSelectedCountryCode, getSelectedSubdivision } from "@/lib/country";
+import { currentMinistryWhere } from "@/lib/government";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,7 @@ interface Node {
   name: string;
   type: string;
   parentId: string | null;
+  ministryId: string | null;
   manager: { firstName: string; lastName: string } | null;
   region: { name: string } | null;
   _count: { members: number };
@@ -81,16 +83,26 @@ export default async function OrganizationPage() {
     ...(subdivision ? { regionId: subdivision.id } : {}),
   };
 
-  const [organizations, structures] = await Promise.all([
+  const minWhere = await currentMinistryWhere(prisma);
+  const [organizations, structures, ministries] = await Promise.all([
     prisma.organization.findMany({ where: { deletedAt: null }, orderBy: { name: "asc" }, include: { country: true, _count: { select: { structures: true } } } }),
     prisma.structure.findMany({ where: structureWhere, orderBy: { name: "asc" }, include: { manager: { select: { firstName: true, lastName: true } }, region: { select: { name: true } }, _count: { select: { members: true } } } }),
+    prisma.ministry.findMany({ where: { ...minWhere, ...(country ? { countryId: country.id } : {}) }, orderBy: [{ order: "asc" }, { name: "asc" }], select: { id: true, name: true } }),
   ]);
+
+  // Structures rattachées à un ministère (chaîne hiérarchique gouvernementale)
+  // vs. structures rattachées uniquement à une organisation cliente.
+  const withMinistry = structures.filter((s) => s.ministryId);
+  const noMinistry = structures.filter((s) => !s.ministryId);
+  const ministryGroups = ministries
+    .map((m) => ({ ministry: m, items: withMinistry.filter((s) => s.ministryId === m.id) }))
+    .filter((g) => g.items.length > 0);
 
   return (
     <div className="space-y-7">
       <PageHeader
         title="Organisation & structures"
-        description="Organisations clientes et organigramme hiérarchique."
+        description="Organigramme hiérarchique : ministères techniques et organisations clientes."
         icon={Building2}
         actions={
           canManage && (
@@ -112,10 +124,35 @@ export default async function OrganizationPage() {
         </div>
       )}
 
+      {/* Organigramme par ministère technique (apex = ministère, structures indentées) */}
+      {ministryGroups.length > 0 && (
+        <section className="space-y-5">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-slate-400">Par ministère technique</h2>
+          {ministryGroups.map(({ ministry, items }) => (
+            <Card key={ministry.id}>
+              <CardContent className="p-6">
+                <div className="flex items-center gap-3">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-700"><Landmark className="size-5" /></span>
+                  <div>
+                    <h3 className="font-extrabold text-institutional-900">{ministry.name}</h3>
+                    <p className="text-xs text-slate-400">{items.length} structure(s) rattachée(s)</p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <StructureTree nodes={items} parentId={null} canManage={canManage} />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </section>
+      )}
+
+      {/* Organisations clientes (structures non rattachées à un ministère) */}
       {organizations.length ? (
-        <div className="space-y-5">
+        <section className="space-y-5">
+          {ministryGroups.length > 0 && <h2 className="text-xs font-bold uppercase tracking-wide text-slate-400">Organisations clientes</h2>}
           {organizations.map((org) => {
-            const orgStructures = structures.filter((s) => s.organizationId === org.id);
+            const orgStructures = noMinistry.filter((s) => s.organizationId === org.id);
             return (
               <Card key={org.id}>
                 <CardContent className="p-6">
@@ -142,14 +179,14 @@ export default async function OrganizationPage() {
                     {orgStructures.length ? (
                       <StructureTree nodes={orgStructures} parentId={null} canManage={canManage} />
                     ) : (
-                      <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-400">{filtered ? "Aucune structure sur ce périmètre." : "Aucune structure pour cette organisation."}</p>
+                      <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-400">{filtered ? "Aucune structure sur ce périmètre." : "Aucune structure non rattachée à un ministère."}</p>
                     )}
                   </div>
                 </CardContent>
               </Card>
             );
           })}
-        </div>
+        </section>
       ) : (
         <EmptyState icon={Building2} title="Aucune organisation" description="Créez une première organisation cliente." />
       )}
