@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, UserCog } from "lucide-react";
 import { requireUser, hasPermission, fullName } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { currentMinistryWhere } from "@/lib/government";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,13 +20,14 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
   if (!hasPermission(me, "user:manage")) redirect("/users");
   const { id } = await params;
 
+  const minWhere = await currentMinistryWhere(prisma);
   const [target, roles, organizations, structures, countries, ministries, permissions, managerRows] = await Promise.all([
     prisma.user.findUnique({ where: { id }, include: { roles: { include: { role: true } }, directPermissions: { select: { key: true } } } }),
     prisma.role.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, scope: true } }),
     prisma.organization.findMany({ where: { deletedAt: null }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
     prisma.structure.findMany({ where: { deletedAt: null }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
     prisma.country.findMany({ where: { isActive: true }, orderBy: { order: "asc" }, select: { id: true, name: true, code: true } }),
-    prisma.ministry.findMany({ orderBy: [{ country: { order: "asc" } }, { order: "asc" }, { name: "asc" }], select: { id: true, name: true } }),
+    prisma.ministry.findMany({ where: minWhere, orderBy: [{ country: { order: "asc" } }, { order: "asc" }, { name: "asc" }], select: { id: true, name: true } }),
     prisma.permission.findMany({ orderBy: [{ module: "asc" }, { action: "asc" }], select: { key: true, module: true, action: true, description: true } }),
     prisma.user.findMany({ where: { deletedAt: null, isActive: true, id: { not: id } }, orderBy: [{ lastName: "asc" }, { firstName: "asc" }], select: { id: true, firstName: true, lastName: true } }),
   ]);

@@ -6,6 +6,7 @@ import { Loader2, AlertCircle, Save, Trash2 } from "lucide-react";
 import { Input, Label } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { CountrySelect } from "@/components/ui/country-select";
+import { SearchSelect } from "@/components/ui/search-select";
 import { Button } from "@/components/ui/button";
 import { STRUCTURE_TYPES } from "@/lib/enums";
 import { createStructure, updateStructure, deleteStructure, regionsForCountryId, type StructureInput } from "@/app/(app)/organization/actions";
@@ -18,6 +19,7 @@ export interface StructureFormInitial {
   type: string;
   organizationId: string;
   parentId: string | null;
+  ministryId: string | null;
   countryId: string | null;
   regionId: string | null;
   managerId: string | null;
@@ -27,12 +29,14 @@ export function StructureForm({
   organizations,
   structures,
   countries,
+  ministries,
   managers,
   initial,
 }: {
   organizations: Opt[];
   structures: Opt[];
   countries: { id: string; name: string; code: string }[];
+  ministries: Opt[];
   managers: Opt[];
   initial?: StructureFormInitial;
 }) {
@@ -45,6 +49,7 @@ export function StructureForm({
   const [type, setType] = useState(initial?.type ?? "");
   const [organizationId, setOrganizationId] = useState(initial?.organizationId ?? organizations[0]?.id ?? "");
   const [parentId, setParentId] = useState(initial?.parentId ?? "");
+  const [ministryId, setMinistryId] = useState(initial?.ministryId ?? "");
   const [countryId, setCountryId] = useState(initial?.countryId ?? "");
   const [regionId, setRegionId] = useState(initial?.regionId ?? "");
   const [regions, setRegions] = useState<Opt[]>([]);
@@ -80,6 +85,7 @@ export function StructureForm({
     const payload: StructureInput = {
       name, type, organizationId,
       parentId: parentId || undefined,
+      ministryId: ministryId || undefined,
       countryId: countryId || undefined,
       regionId: regionId || undefined,
       managerId: managerId || undefined,
@@ -131,6 +137,18 @@ export function StructureForm({
             <option value="">— Aucune (racine) —</option>
             {parentOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="min">Ministère de rattachement <span className="font-normal text-slate-400">(chaîne hiérarchique)</span></Label>
+          <SearchSelect
+            id="min"
+            value={ministryId}
+            onChange={setMinistryId}
+            options={ministries.map((m) => ({ value: m.id, label: m.name }))}
+            emptyLabel="—"
+            placeholder="— Aucun —"
+            searchPlaceholder="Rechercher un ministère…"
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="cty">Pays</Label>

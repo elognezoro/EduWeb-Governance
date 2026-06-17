@@ -248,6 +248,10 @@ model Structure {
   regionId  String?
   region    Region?  @relation(fields: [regionId], references: [id])
 
+  // Rattachement au niveau ministériel (chaîne hiérarchique jusqu'au ministère).
+  ministryId String?
+  ministry   Ministry? @relation(fields: [ministryId], references: [id])
+
   managerId String?
   manager   User?   @relation("StructureManager", fields: [managerId], references: [id])
 
@@ -279,6 +283,7 @@ model Ministry {
 
   users      User[]
   legalTexts LegalText[]
+  structures Structure[]
 
   @@index([countryId])
   @@index([governmentId])

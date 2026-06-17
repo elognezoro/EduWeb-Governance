@@ -5,6 +5,7 @@ import { ArrowLeft, FilePlus2 } from "lucide-react";
 import { requireUser, hasPermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSelectedCountryCode } from "@/lib/country";
+import { currentMinistryWhere } from "@/lib/government";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { DepositForm } from "@/components/edulex/deposit-form";
@@ -16,9 +17,10 @@ export default async function NewLegalTextPage() {
   if (!hasPermission(user, "edulex:create")) redirect("/edulex");
 
   const code = await getSelectedCountryCode();
+  const minWhere = await currentMinistryWhere(prisma);
   const [countries, ministries, sectors, jurisdictions] = await Promise.all([
     prisma.country.findMany({ where: { isActive: true }, orderBy: { order: "asc" }, select: { id: true, code: true, name: true } }),
-    prisma.ministry.findMany({ orderBy: [{ country: { order: "asc" } }, { order: "asc" }, { name: "asc" }], select: { id: true, code: true, name: true, countryId: true } }),
+    prisma.ministry.findMany({ where: minWhere, orderBy: [{ country: { order: "asc" } }, { order: "asc" }, { name: "asc" }], select: { id: true, code: true, name: true, countryId: true } }),
     prisma.sector.findMany({ orderBy: { name: "asc" }, select: { id: true, code: true, name: true } }),
     prisma.jurisdiction.findMany({ orderBy: { name: "asc" }, select: { id: true, code: true, name: true, countryId: true } }),
   ]);

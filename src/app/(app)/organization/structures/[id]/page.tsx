@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Network } from "lucide-react";
 import { requireUser, hasPermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { currentMinistryWhere } from "@/lib/government";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { StructureForm } from "@/components/organization/structure-form";
@@ -15,11 +16,13 @@ export default async function EditStructurePage({ params }: { params: Promise<{ 
   if (!hasPermission(user, "organization:manage")) redirect("/organization");
   const { id } = await params;
 
-  const [structure, organizations, structures, countries, users] = await Promise.all([
+  const minWhere = await currentMinistryWhere(prisma);
+  const [structure, organizations, structures, countries, ministries, users] = await Promise.all([
     prisma.structure.findUnique({ where: { id } }),
     prisma.organization.findMany({ where: { deletedAt: null }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
     prisma.structure.findMany({ where: { deletedAt: null }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
     prisma.country.findMany({ where: { isActive: true }, orderBy: { order: "asc" }, select: { id: true, name: true, code: true } }),
+    prisma.ministry.findMany({ where: minWhere, orderBy: [{ country: { order: "asc" } }, { order: "asc" }, { name: "asc" }], select: { id: true, name: true } }),
     prisma.user.findMany({ where: { deletedAt: null, isActive: true }, orderBy: { lastName: "asc" }, select: { id: true, firstName: true, lastName: true } }),
   ]);
 
@@ -38,6 +41,7 @@ export default async function EditStructurePage({ params }: { params: Promise<{ 
             organizations={organizations}
             structures={structures}
             countries={countries}
+            ministries={ministries}
             managers={managers}
             initial={{
               id: structure.id,
@@ -45,6 +49,7 @@ export default async function EditStructurePage({ params }: { params: Promise<{ 
               type: structure.type,
               organizationId: structure.organizationId,
               parentId: structure.parentId,
+              ministryId: structure.ministryId,
               countryId: structure.countryId,
               regionId: structure.regionId,
               managerId: structure.managerId,
