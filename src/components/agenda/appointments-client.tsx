@@ -41,18 +41,19 @@ function toLocalInput(iso: string) {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
 
-function ApptForm({ initial, submitLabel, onSubmit, onCancel, pending }: {
+function ApptForm({ initial, submitLabel, onSubmit, onCancel, pending, defaultReminder = 60 }: {
   initial?: Appt;
   submitLabel: string;
   onSubmit: (input: AppointmentInput) => void;
   onCancel?: () => void;
   pending: boolean;
+  defaultReminder?: number;
 }) {
   const [title, setTitle] = useState(initial?.title ?? "");
   const [startAt, setStartAt] = useState(initial ? toLocalInput(initial.startAtISO) : "");
   const [location, setLocation] = useState(initial?.location ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
-  const [reminder, setReminder] = useState(String(initial?.reminderMinutes ?? 60));
+  const [reminder, setReminder] = useState(String(initial?.reminderMinutes ?? defaultReminder));
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -133,7 +134,7 @@ function ApptCard({ a, onEdit, onDelete, onToggle, busy }: {
   );
 }
 
-export function AppointmentsClient({ appointments }: { appointments: Appt[] }) {
+export function AppointmentsClient({ appointments, remindersEnabled = true }: { appointments: Appt[]; remindersEnabled?: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -172,6 +173,7 @@ export function AppointmentsClient({ appointments }: { appointments: Appt[] }) {
               <ApptForm
                 submitLabel="Ajouter le rendez-vous"
                 pending={pending}
+                defaultReminder={remindersEnabled ? 60 : 0}
                 onCancel={() => setAdding(false)}
                 onSubmit={(input) => run(() => createAppointment(input), () => setAdding(false))}
               />

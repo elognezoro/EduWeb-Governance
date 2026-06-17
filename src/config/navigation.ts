@@ -15,6 +15,7 @@ import {
   Bell,
   Archive,
   Settings,
+  SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react";
 
@@ -64,6 +65,7 @@ export const NAVIGATION: NavGroup[] = [
     title: "Système",
     items: [
       { label: "Notifications", href: "/notifications", icon: Bell },
+      { label: "Paramètres", href: "/parametres", icon: SlidersHorizontal },
       { label: "Archives", href: "/archives", icon: Archive },
       { label: "Administration", href: "/admin", icon: Settings },
     ],

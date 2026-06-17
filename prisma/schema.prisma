@@ -33,6 +33,9 @@ model User {
   locale       String    @default("fr")
   // Type de profil (multi-profil) : perso | ecole | entreprise | asso.
   profileType  String    @default("perso")
+  // Paramètres : période de bilan par défaut (null = défaut du profil) + rappels.
+  defaultBilanPeriode String?
+  remindersEnabled    Boolean @default(true)
   isActive     Boolean   @default(true)
   lastLoginAt  DateTime?
 

@@ -23,7 +23,11 @@ const fmt = new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short", h
 export default async function BilanPage({ searchParams }: { searchParams: Promise<{ periode?: string }> }) {
   const user = await requireUser();
   const sp = await searchParams;
-  const periode = sp.periode ? normalizePeriode(sp.periode) : profileMeta(user.profileType).defaultPeriode;
+  const periode = sp.periode
+    ? normalizePeriode(sp.periode)
+    : user.defaultBilanPeriode
+      ? normalizePeriode(user.defaultBilanPeriode)
+      : profileMeta(user.profileType).defaultPeriode;
   const b = await getBilan(prisma, user.id, periode);
 
   const faits = b.items.filter((i) => i.done);

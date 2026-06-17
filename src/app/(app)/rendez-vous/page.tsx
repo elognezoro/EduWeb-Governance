@@ -23,7 +23,7 @@ export default async function RendezVousPage() {
   return (
     <div className="space-y-7">
       <PageHeader title="Rendez-vous" description="Votre agenda personnel — RDV, rappels et suivi." icon={CalendarClock} />
-      <AppointmentsClient appointments={appointments} />
+      <AppointmentsClient appointments={appointments} remindersEnabled={user.remindersEnabled} />
     </div>
   );
 }
