@@ -83,6 +83,8 @@ model User {
   certificates            Certificate[]
   reviewRecommendations   ReviewRecommendation[]
   appointments            Appointment[]
+  absencesAsAgent         AbsenceRecord[]          @relation("AgentAbsences")
+  absencesRecorded        AbsenceRecord[]          @relation("AbsenceRecorder")
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -460,6 +462,44 @@ model Appointment {
 
   @@index([userId])
   @@index([startAt])
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  AUTORISATIONS D'ABSENCE
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Une absence autorisée comptabilisée par le supérieur hiérarchique d'un agent.
+model AbsenceRecord {
+  id      String @id @default(cuid())
+  agentId String
+  agent   User   @relation("AgentAbsences", fields: [agentId], references: [id], onDelete: Cascade)
+
+  recordedById String?
+  recordedBy   User?   @relation("AbsenceRecorder", fields: [recordedById], references: [id])
+
+  // PERSONAL | STATUTORY | TRAINING | FORCE_MAJEURE
+  motif     String
+  startDate DateTime
+  endDate   DateTime
+  days      Int      // nombre de jours d'absence (par défaut jours calendaires inclus, ajustable)
+  note      String?
+  year      Int      // année de rattachement (cumul annuel) — dérivée de startDate
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([agentId])
+  @@index([year])
+}
+
+// Politique d'absence (ligne globale unique, modifiable par l'admin / supérieur).
+model AbsencePolicy {
+  id                   String   @id @default(cuid())
+  scope                String   @unique @default("GLOBAL")
+  annualQuotaDays      Int      @default(30) // durée du congé annuel réglementaire
+  warningThresholdDays Int      @default(20) // seuil d'alerte (jours cumulés)
+  updatedById          String?
+  updatedAt            DateTime @updatedAt
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
