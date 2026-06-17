@@ -18,6 +18,7 @@ import {
   Archive,
   Settings,
   SlidersHorizontal,
+  BookOpen,
   type LucideIcon,
 } from "lucide-react";
 
@@ -68,6 +69,7 @@ export const NAVIGATION: NavGroup[] = [
   {
     title: "Système",
     items: [
+      { label: "Guide d'utilisation", href: "/guide", icon: BookOpen },
       { label: "Notifications", href: "/notifications", icon: Bell },
       { label: "Paramètres", href: "/parametres", icon: SlidersHorizontal },
       { label: "Archives", href: "/archives", icon: Archive },
