@@ -142,12 +142,14 @@ export async function moveStructure(input: MoveStructureInput): Promise<ActionRe
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
   const d = parsed.data;
 
+  // Arbre complet : sert à la garde anti-cycle ET à la propagation aux descendants.
+  const all = await prisma.structure.findMany({ where: { deletedAt: null }, select: { id: true, parentId: true } });
+  const parentOf = new Map(all.map((s) => [s.id, s.parentId]));
+
   // Garde anti-cycle : le nouveau parent ne peut être la structure elle-même
   // ni l'un de ses descendants.
   if (d.parentId) {
     if (d.parentId === d.id) return { ok: false, error: "Une structure ne peut pas être son propre parent." };
-    const all = await prisma.structure.findMany({ where: { deletedAt: null }, select: { id: true, parentId: true } });
-    const parentOf = new Map(all.map((s) => [s.id, s.parentId]));
     let cur: string | null = d.parentId;
     const seen = new Set<string>();
     while (cur) {
@@ -158,15 +160,35 @@ export async function moveStructure(input: MoveStructureInput): Promise<ActionRe
     }
   }
 
-  await prisma.structure.update({
-    where: { id: d.id },
-    data: {
-      parentId: d.parentId,
-      ministryId: d.ministryId,
-      ...(d.organizationId ? { organizationId: d.organizationId } : {}),
-    },
-  });
-  await writeAudit({ userId: g.user!.id, action: "move", module: "organization", entityType: "Structure", entityId: d.id, metadata: { parentId: d.parentId, ministryId: d.ministryId } });
+  // Sous-arbre déplacé : les descendants suivent le ministère / l'organisation du nœud déplacé
+  // (leur structure interne — parentId — est conservée).
+  const childrenOf = new Map<string, string[]>();
+  for (const s of all) if (s.parentId) (childrenOf.get(s.parentId) ?? childrenOf.set(s.parentId, []).get(s.parentId)!).push(s.id);
+  const descendants: string[] = [];
+  const visited = new Set<string>([d.id]);
+  const stack = [d.id];
+  while (stack.length) {
+    const curId = stack.pop()!;
+    for (const childId of childrenOf.get(curId) ?? []) {
+      if (!visited.has(childId)) { visited.add(childId); descendants.push(childId); stack.push(childId); }
+    }
+  }
+
+  const subtreeData = {
+    ministryId: d.ministryId,
+    ...(d.organizationId ? { organizationId: d.organizationId } : {}),
+  };
+
+  await prisma.$transaction([
+    prisma.structure.update({
+      where: { id: d.id },
+      data: { parentId: d.parentId, ...subtreeData },
+    }),
+    ...(descendants.length
+      ? [prisma.structure.updateMany({ where: { id: { in: descendants } }, data: subtreeData })]
+      : []),
+  ]);
+  await writeAudit({ userId: g.user!.id, action: "move", module: "organization", entityType: "Structure", entityId: d.id, metadata: { parentId: d.parentId, ministryId: d.ministryId, descendants: descendants.length } });
   revalidatePath("/organization");
   return { ok: true };
 }
