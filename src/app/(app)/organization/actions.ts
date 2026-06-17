@@ -126,6 +126,51 @@ export async function updateStructure(id: string, input: StructureInput): Promis
   return { ok: true, id };
 }
 
+// ── Déplacement d'une structure dans l'organigramme (glisser-déposer) ───────────
+const moveSchema = z.object({
+  id: z.string().min(1),
+  parentId: z.string().nullable().optional(),      // null = racine ; absent = inchangé
+  ministryId: z.string().nullable().optional(),    // null = détaché d'un ministère
+  organizationId: z.string().optional(),
+});
+export type MoveStructureInput = z.infer<typeof moveSchema>;
+
+export async function moveStructure(input: MoveStructureInput): Promise<ActionResult> {
+  const g = await guard();
+  if (g.error) return { ok: false, error: g.error };
+  const parsed = moveSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+  const d = parsed.data;
+
+  // Garde anti-cycle : le nouveau parent ne peut être la structure elle-même
+  // ni l'un de ses descendants.
+  if (d.parentId) {
+    if (d.parentId === d.id) return { ok: false, error: "Une structure ne peut pas être son propre parent." };
+    const all = await prisma.structure.findMany({ where: { deletedAt: null }, select: { id: true, parentId: true } });
+    const parentOf = new Map(all.map((s) => [s.id, s.parentId]));
+    let cur: string | null = d.parentId;
+    const seen = new Set<string>();
+    while (cur) {
+      if (cur === d.id) return { ok: false, error: "Déplacement impossible : cela créerait un cycle hiérarchique." };
+      if (seen.has(cur)) break;
+      seen.add(cur);
+      cur = parentOf.get(cur) ?? null;
+    }
+  }
+
+  await prisma.structure.update({
+    where: { id: d.id },
+    data: {
+      parentId: d.parentId,
+      ministryId: d.ministryId,
+      ...(d.organizationId ? { organizationId: d.organizationId } : {}),
+    },
+  });
+  await writeAudit({ userId: g.user!.id, action: "move", module: "organization", entityType: "Structure", entityId: d.id, metadata: { parentId: d.parentId, ministryId: d.ministryId } });
+  revalidatePath("/organization");
+  return { ok: true };
+}
+
 export async function deleteStructure(id: string): Promise<ActionResult> {
   const g = await guard();
   if (g.error) return { ok: false, error: g.error };
