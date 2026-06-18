@@ -2,8 +2,10 @@ import "server-only";
 import {
   Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
   PageBreak, Table, TableRow, TableCell, WidthType,
+  Header, Footer, ImageRun, PageNumber, TableOfContents, BorderStyle,
 } from "docx";
 import { FORMATION } from "./formation-data";
+import { FORMATION_LOGO_B64, FORMATION_LOGO_W, FORMATION_LOGO_H } from "./formation-logo";
 
 const h1 = (t: string) => new Paragraph({ text: t, heading: HeadingLevel.HEADING_1, spacing: { before: 320, after: 140 } });
 const h2 = (t: string) => new Paragraph({ text: t, heading: HeadingLevel.HEADING_2, spacing: { before: 240, after: 100 } });
@@ -25,7 +27,7 @@ const cell = (children: Paragraph[]) => new TableCell({ children, width: { size:
 /** Construit le support de formation au format Word (.docx) à partir du contenu réel. */
 export async function buildFormationDocx(): Promise<Buffer> {
   const { syllabus: s, modules, glossaire, evaluationFinale } = FORMATION;
-  const c: (Paragraph | Table)[] = [];
+  const c: (Paragraph | Table | TableOfContents)[] = [];
 
   // ── Page de garde ──
   c.push(new Paragraph({ text: "", spacing: { before: 2400 } }));
@@ -54,6 +56,11 @@ export async function buildFormationDocx(): Promise<Buffer> {
     c.push(p(`${role} — Nom : ………………………  Fonction : ………………………  Date : ……………`));
     c.push(p("Signature et cachet : ……………………………………………………………", { indent: 240 }));
   }
+  c.push(pageBreak());
+
+  // ── Table des matières (champ Word, recalculé à l'ouverture) ──
+  c.push(h1("Table des matières"));
+  c.push(new TableOfContents("Sommaire", { hyperlink: true, headingStyleRange: "1-3" }));
   c.push(pageBreak());
 
   // ── I. Syllabus ──
@@ -117,12 +124,46 @@ export async function buildFormationDocx(): Promise<Buffer> {
   c.push(h2("Corrigé"));
   evaluationFinale.forEach((q, i) => c.push(p(`${i + 1}. ${q.bonneReponse}${q.explication ? ` — ${q.explication}` : ""}`)));
 
+  // En-tête avec logo + pied de page numéroté (sauf page de garde).
+  const logoBuf = Buffer.from(FORMATION_LOGO_B64, "base64");
+  const dispW = 110;
+  const dispH = Math.round((dispW * FORMATION_LOGO_H) / FORMATION_LOGO_W);
+  const headerWithLogo = new Header({
+    children: [
+      new Paragraph({
+        spacing: { after: 40 },
+        border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "CBD5E1", space: 4 } },
+        children: [new ImageRun({ type: "png", data: logoBuf, transformation: { width: dispW, height: dispH } })],
+      }),
+    ],
+  });
+  const footerWithPage = new Footer({
+    children: [
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        border: { top: { style: BorderStyle.SINGLE, size: 4, color: "E2E8F0", space: 4 } },
+        children: [
+          new TextRun({ text: "EduWeb Governance — Support de formation des utilisateurs     Page ", size: 16, color: "94A3B8" }),
+          new TextRun({ children: [PageNumber.CURRENT], size: 16, color: "94A3B8" }),
+        ],
+      }),
+    ],
+  });
+  const emptyHeader = new Header({ children: [new Paragraph({ text: "" })] });
+  const emptyFooter = new Footer({ children: [new Paragraph({ text: "" })] });
+
   const doc = new Document({
     creator: "EduWeb Governance",
     title: "Support de formation des utilisateurs",
     description: "Support de formation académique — EduWeb Governance",
+    features: { updateFields: true }, // Word recalcule la table des matières à l'ouverture
     styles: { default: { document: { run: { font: "Calibri", size: 22 } } } },
-    sections: [{ children: c }],
+    sections: [{
+      properties: { titlePage: true }, // page de garde sans en-tête/pied
+      headers: { default: headerWithLogo, first: emptyHeader },
+      footers: { default: footerWithPage, first: emptyFooter },
+      children: c,
+    }],
   });
 
   return Packer.toBuffer(doc);
