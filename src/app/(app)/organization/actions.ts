@@ -4,7 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser, hasPermission } from "@/lib/auth";
+import { getCurrentUser, hasPermission, isSuperAdmin } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit";
 
 export type ActionResult = { ok: true; id?: string } | { ok: false; error: string };
@@ -13,6 +13,14 @@ async function guard() {
   const user = await getCurrentUser();
   if (!user) return { user: null, error: "Non authentifié." as const };
   if (!hasPermission(user, "organization:manage")) return { user, error: "Permission requise (organization:manage)." as const };
+  return { user, error: null };
+}
+
+/** Suppressions (structures, organisations) : réservées au super administrateur. */
+async function superGuard() {
+  const user = await getCurrentUser();
+  if (!user) return { user: null, error: "Non authentifié." as const };
+  if (!isSuperAdmin(user)) return { user, error: "Suppression réservée au super administrateur." as const };
   return { user, error: null };
 }
 
@@ -204,7 +212,7 @@ async function softDeleteStructure(id: string, userId: string): Promise<ActionRe
 
 /** Suppression depuis la fiche structure : redirige vers l'organigramme en cas de succès. */
 export async function deleteStructure(id: string): Promise<ActionResult> {
-  const g = await guard();
+  const g = await superGuard();
   if (g.error) return { ok: false, error: g.error };
   const res = await softDeleteStructure(id, g.user!.id);
   if (!res.ok) return res;
@@ -214,7 +222,7 @@ export async function deleteStructure(id: string): Promise<ActionResult> {
 
 /** Suppression « en place » depuis l'organigramme : renvoie le résultat (le client rafraîchit). */
 export async function deleteStructureInline(id: string): Promise<ActionResult> {
-  const g = await guard();
+  const g = await superGuard();
   if (g.error) return { ok: false, error: g.error };
   const res = await softDeleteStructure(id, g.user!.id);
   if (res.ok) revalidatePath("/organization");
@@ -223,7 +231,7 @@ export async function deleteStructureInline(id: string): Promise<ActionResult> {
 
 /** Suppression (douce) d'une organisation et, en cascade, de ses structures rattachées. */
 export async function deleteOrganization(id: string): Promise<ActionResult> {
-  const g = await guard();
+  const g = await superGuard();
   if (g.error) return { ok: false, error: g.error };
 
   const org = await prisma.organization.findFirst({ where: { id, deletedAt: null }, select: { id: true } });

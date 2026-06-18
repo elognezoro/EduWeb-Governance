@@ -32,6 +32,7 @@ export function StructureForm({
   ministries,
   managers,
   initial,
+  canDelete = false,
 }: {
   organizations: Opt[];
   structures: Opt[];
@@ -39,6 +40,8 @@ export function StructureForm({
   ministries: Opt[];
   managers: Opt[];
   initial?: StructureFormInitial;
+  /** Suppression réservée au super administrateur. */
+  canDelete?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -178,7 +181,7 @@ export function StructureForm({
           {initial ? "Enregistrer" : "Créer la structure"}
         </Button>
         <Button type="button" variant="ghost" onClick={() => router.back()} disabled={pending}>Annuler</Button>
-        {initial && (
+        {initial && canDelete && (
           <div className="ml-auto">
             {!confirming ? (
               <Button type="button" variant="ghost" onClick={() => setConfirming(true)} className="text-danger-500 hover:bg-red-50">

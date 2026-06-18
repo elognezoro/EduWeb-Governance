@@ -49,12 +49,13 @@ function applyMove(list: OrgNode[], id: string, target: MoveTarget): OrgNode[] {
 }
 
 export function OrgChart({
-  structures, ministries, organizations, canManage, filtered,
+  structures, ministries, organizations, canManage, canDelete, filtered,
 }: {
   structures: OrgNode[];
   ministries: OrgMinistry[];
   organizations: OrgOrganization[];
   canManage: boolean;
+  canDelete: boolean;
   filtered: boolean;
 }) {
   const router = useRouter();
@@ -249,7 +250,7 @@ export function OrgChart({
                     <Pencil className="size-4" />
                   </Link>
                 )}
-                {canManage && !movingId && (
+                {canDelete && !movingId && (
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setConfirmDelete({ kind: "structure", id: n.id, name: n.name }); }}
@@ -379,7 +380,7 @@ export function OrgChart({
                         <div className="flex items-center gap-2">
                           {org.type && <Badge tone="neutral">{org.type}</Badge>}
                           {canManage && <FileUpload purpose="logo" entityId={org.id} accept="image/*" label="Logo" variant="ghost" />}
-                          {canManage && (
+                          {canDelete && (
                             <button
                               type="button"
                               onClick={() => setConfirmDelete({ kind: "org", id: org.id, name: org.name, count: nodes.filter((s) => s.organizationId === org.id).length })}

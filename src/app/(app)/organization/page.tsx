@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Building2, Plus, MapPin } from "lucide-react";
-import { requireUser, hasPermission } from "@/lib/auth";
+import { requireUser, hasPermission, isSuperAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSelectedCountryCode, getSelectedSubdivision } from "@/lib/country";
 import { currentMinistryWhere } from "@/lib/government";
@@ -16,6 +16,7 @@ export const metadata: Metadata = { title: "Organisation" };
 export default async function OrganizationPage() {
   const user = await requireUser();
   const canManage = hasPermission(user, "organization:manage");
+  const canDelete = isSuperAdmin(user); // suppressions réservées au super admin
 
   const [code, subId] = await Promise.all([getSelectedCountryCode(), getSelectedSubdivision()]);
   const country = code !== "ALL" ? await prisma.country.findUnique({ where: { code }, select: { id: true, code: true, name: true } }) : null;
@@ -71,7 +72,7 @@ export default async function OrganizationPage() {
         </div>
       )}
 
-      <OrgChart structures={nodes} ministries={ministries} organizations={orgs} canManage={canManage} filtered={filtered} />
+      <OrgChart structures={nodes} ministries={ministries} organizations={orgs} canManage={canManage} canDelete={canDelete} filtered={filtered} />
     </div>
   );
 }

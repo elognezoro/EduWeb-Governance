@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Network } from "lucide-react";
-import { requireUser, hasPermission } from "@/lib/auth";
+import { requireUser, hasPermission, isSuperAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { currentMinistryWhere } from "@/lib/government";
 import { PageHeader } from "@/components/layout/page-header";
@@ -43,6 +43,7 @@ export default async function EditStructurePage({ params }: { params: Promise<{ 
             countries={countries}
             ministries={ministries}
             managers={managers}
+            canDelete={isSuperAdmin(user)}
             initial={{
               id: structure.id,
               name: structure.name,
