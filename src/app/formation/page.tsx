@@ -1,19 +1,35 @@
 import type { Metadata } from "next";
+import { Monitor } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { FORMATION } from "@/lib/formation-data";
 import { FormationControls } from "./formation-controls";
 
 export const metadata: Metadata = { title: "Support de formation — EduWeb Governance" };
 
+/** Schémas d'écran annotés (aperçus didactiques) pour les modules clés. */
+const SCREEN_SCHEMAS: Record<string, { titre: string; navIndex: number; callouts: string[] }> = {
+  M2: { titre: "Tableau de bord", navIndex: 1, callouts: ["Filtre Pays / subdivision (barre supérieure)", "Cartes d'indicateurs (KPI)", "Bouton « Nouvelle activité »", "Graphiques et activités récentes"] },
+  M3: { titre: "Organisation & organigramme", navIndex: 0, callouts: ["Ministère / organisation : zone d'accueil (dépôt)", "Filtre Pays pour restreindre le périmètre", "Boutons « + Organisation » / « + Structure »", "Structure : déplacer, éditer, supprimer (super admin)"] },
+  M5: { titre: "Activités", navIndex: 3, callouts: ["Navigation : module Activités", "Recherche et filtres par statut", "Bouton « Nouvelle activité »", "Liste des activités (Brouillon → Consolidé)"] },
+  M6: { titre: "Validation hiérarchique", navIndex: 4, callouts: ["Navigation : module Validation", "Filtre de périmètre", "Bouton « Examiner »", "File des activités à statuer (« · à vous »)"] },
+  M7: { titre: "Autorisations d'absence", navIndex: 2, callouts: ["Navigation : module Absences", "Réglage de la politique (congé, seuil)", "Demander / valider une absence", "Comptabilité par motif + alertes de seuil"] },
+  M9: { titre: "Référentiel EduLex", navIndex: 0, callouts: ["Navigation : module EduLex", "Recherche de textes réglementaires", "Dépôt / import d'un texte", "Niveau de vérification V0 → V4 et confidentialité"] },
+};
+
 const PRINT_CSS = `
 @media print {
-  @page { size: A4; margin: 18mm 15mm 20mm; }
+  @page { size: A4; margin: 24mm 15mm 20mm; }
   html, body { background: #fff !important; }
-  .fm-footer { position: fixed; bottom: 4mm; left: 0; right: 0; text-align: center; font-size: 8.5pt; color: #94a3b8; }
+  .fm-runhead { position: fixed; top: 7mm; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between;
+    font-size: 8.5pt; color: #475569; border-bottom: 0.5pt solid #cbd5e1; padding-bottom: 1.6mm; }
+  .fm-runhead .fm-rh-left { display: flex; align-items: center; gap: 2mm; font-weight: 600; }
+  .fm-runhead img { height: 6.5mm; width: auto; }
+  .fm-footer { position: fixed; bottom: 7mm; left: 0; right: 0; text-align: center; font-size: 8pt; color: #94a3b8;
+    border-top: 0.5pt solid #e2e8f0; padding-top: 1.6mm; }
 }
 @media screen {
   .fm-doc { max-width: 900px; margin: 0 auto; padding: 1.5rem 1.25rem 5rem; }
-  .fm-footer { display: none; }
+  .fm-runhead, .fm-footer { display: none; }
 }
 `;
 
@@ -26,21 +42,86 @@ export default async function FormationPage() {
       <style dangerouslySetInnerHTML={{ __html: PRINT_CSS }} />
       <FormationControls />
 
+      {/* En-tête institutionnel répété à l'impression */}
+      <div className="fm-runhead" aria-hidden>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <span className="fm-rh-left"><img src="/logo.png" alt="" /> EduWeb Governance</span>
+        <span>Support de formation des utilisateurs</span>
+      </div>
+
       <article className="fm-doc">
         {/* ── Page de garde ───────────────────────────────────────────── */}
-        <header className="flex min-h-[60vh] flex-col items-center justify-center break-after-page py-16 text-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="EduWeb Governance" className="mb-10 h-24 w-auto object-contain" />
-          <p className="text-sm font-bold uppercase tracking-[0.3em] text-brand-700">Support de formation</p>
-          <h1 className="mt-4 max-w-2xl text-4xl font-extrabold leading-tight text-institutional-900">
-            {s.intitule || "EduWeb Governance — Formation des utilisateurs"}
-          </h1>
-          <p className="mt-4 max-w-xl text-base leading-relaxed text-slate-500">{s.presentation}</p>
-          <div className="mt-12 space-y-1 text-sm text-slate-400">
-            <p className="font-semibold text-slate-600">Plateforme nationale de gouvernance éducative</p>
-            <p>Édition 2026 · Version 1.0</p>
+        <header className="flex min-h-[80vh] flex-col break-after-page py-8">
+          <div className="flex items-center justify-between border-b-2 border-institutional-900 pb-4">
+            <div className="flex items-center gap-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="EduWeb Governance" className="h-12 w-auto object-contain" />
+              <div>
+                <p className="font-extrabold leading-tight text-institutional-900">EduWeb Governance</p>
+                <p className="text-xs text-slate-500">Plateforme de gouvernance éducative</p>
+              </div>
+            </div>
+            <p className="text-right text-[11px] font-bold uppercase leading-tight tracking-wider text-brand-700">Manuel de<br />formation des utilisateurs</p>
+          </div>
+
+          <div className="flex flex-1 flex-col items-center justify-center py-12 text-center">
+            <p className="text-sm font-bold uppercase tracking-[0.3em] text-brand-700">Support de formation</p>
+            <h1 className="mt-5 max-w-2xl text-4xl font-extrabold leading-tight text-institutional-900">
+              {s.intitule || "EduWeb Governance — Formation des utilisateurs"}
+            </h1>
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-500">{s.presentation}</p>
+          </div>
+
+          <div className="flex items-end justify-between border-t border-slate-200 pt-4 text-sm text-slate-400">
+            <span className="font-semibold text-slate-600">Édition 2026 · Version 1.0</span>
+            <span>Document à usage de formation</span>
           </div>
         </header>
+
+        {/* ── Fiche de validation du document ─────────────────────────── */}
+        <section className="break-after-page">
+          <h2 className="mb-6 border-b-4 border-institutional-900 pb-2 text-2xl font-extrabold uppercase tracking-wide text-institutional-900">
+            Fiche de validation du document
+          </h2>
+
+          <h4 className="mb-2 text-sm font-extrabold uppercase tracking-wider text-brand-700">Suivi des versions</h4>
+          <table className="mb-8 w-full border-collapse text-sm">
+            <thead>
+              <tr className="bg-slate-50 text-left text-slate-600">
+                <th className="border border-slate-200 px-3 py-2 font-bold">Version</th>
+                <th className="border border-slate-200 px-3 py-2 font-bold">Date</th>
+                <th className="border border-slate-200 px-3 py-2 font-bold">Objet de la révision</th>
+                <th className="border border-slate-200 px-3 py-2 font-bold">Rédacteur</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="border border-slate-200 px-3 py-2">1.0</td>
+                <td className="border border-slate-200 px-3 py-2">2026</td>
+                <td className="border border-slate-200 px-3 py-2">Création initiale du support de formation</td>
+                <td className="border border-slate-200 px-3 py-2">Cellule EduWeb Governance</td>
+              </tr>
+              <tr><td className="border border-slate-200 px-3 py-5"></td><td className="border border-slate-200"></td><td className="border border-slate-200"></td><td className="border border-slate-200"></td></tr>
+              <tr><td className="border border-slate-200 px-3 py-5"></td><td className="border border-slate-200"></td><td className="border border-slate-200"></td><td className="border border-slate-200"></td></tr>
+            </tbody>
+          </table>
+
+          <h4 className="mb-3 text-sm font-extrabold uppercase tracking-wider text-brand-700">Validation</h4>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {["Établi par", "Vérifié par", "Approuvé par"].map((role) => (
+              <div key={role} className="break-inside-avoid rounded-2xl border border-slate-200 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-brand-700">{role}</p>
+                <div className="mt-3 space-y-3 text-sm text-slate-500">
+                  <p>Nom : <span className="inline-block min-w-[7rem] border-b border-dotted border-slate-400">&nbsp;</span></p>
+                  <p>Fonction : <span className="inline-block min-w-[5rem] border-b border-dotted border-slate-400">&nbsp;</span></p>
+                  <p>Date : <span className="inline-block min-w-[5rem] border-b border-dotted border-slate-400">&nbsp;</span></p>
+                </div>
+                <p className="mt-4 text-xs text-slate-400">Signature et cachet</p>
+                <div className="mt-1 h-20 rounded-xl border border-dashed border-slate-300"></div>
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* ── Syllabus ────────────────────────────────────────────────── */}
         <section className="break-before-page">
@@ -94,6 +175,8 @@ export default async function FormationPage() {
                   <h3 className="text-xl font-extrabold text-institutional-900">{m.titre}</h3>
                 </div>
                 <p className="mb-4 text-sm italic text-slate-500">Public concerné : {m.publicCible}</p>
+
+                {SCREEN_SCHEMAS[m.code] && <ScreenSchema {...SCREEN_SCHEMAS[m.code]} />}
 
                 <SubTitle>Objectifs pédagogiques</SubTitle>
                 <BulletList items={m.objectifs} />
@@ -265,5 +348,58 @@ function TocLine({ label, sub }: { label: string; sub: string }) {
     <li className="flex gap-2 font-bold text-institutional-900">
       <span className="text-brand-600">{sub}.</span> {label}
     </li>
+  );
+}
+
+/** Aperçu d'écran schématique (wireframe annoté) — illustration didactique d'un module. */
+function ScreenSchema({ titre, navIndex, callouts }: { titre: string; navIndex: number; callouts: string[] }) {
+  const navY = (i: number) => 80 + i * 36;
+  const dots = [
+    { x: 140, y: navY(navIndex) + 12 },
+    { x: 576, y: 49 },
+    { x: 652, y: 87 },
+    { x: 188, y: 136 },
+  ];
+  const cs = callouts.slice(0, 4);
+  return (
+    <figure className="my-5 break-inside-avoid rounded-2xl border border-slate-200 bg-slate-50/40 p-4">
+      <figcaption className="mb-3 flex items-center gap-2 text-sm font-bold text-institutional-900">
+        <Monitor className="size-4 text-brand-600" /> Aperçu de l'écran — {titre}
+      </figcaption>
+      <div className="grid items-center gap-4 sm:grid-cols-[1fr_15rem]">
+        <svg viewBox="0 0 680 400" className="w-full rounded-xl border border-slate-200 bg-white" role="img" aria-label={`Schéma de l'écran ${titre}`}>
+          <circle cx="18" cy="16" r="3.5" fill="#cbd5e1" /><circle cx="30" cy="16" r="3.5" fill="#cbd5e1" /><circle cx="42" cy="16" r="3.5" fill="#cbd5e1" />
+          <line x1="0" y1="30" x2="680" y2="30" stroke="#eef2f7" />
+          <rect x="180" y="40" width="170" height="18" rx="9" fill="#f1f5f9" />
+          <rect x="540" y="40" width="72" height="18" rx="9" fill="#ecfdf5" stroke="#a7f3d0" />
+          <circle cx="640" cy="49" r="10" fill="#0f766e" />
+          <rect x="0" y="30" width="148" height="370" fill="#f8fafc" />
+          {[0, 1, 2, 3, 4].map((i) => (
+            <rect key={i} x="16" y={navY(i)} width="118" height="24" rx="7" fill={i === navIndex ? "#ecfdf5" : "#eef2f7"} stroke={i === navIndex ? "#34d399" : "transparent"} />
+          ))}
+          <rect x="172" y="78" width="210" height="20" rx="6" fill="#e2e8f0" />
+          <rect x="556" y="74" width="108" height="26" rx="11" fill="#047857" />
+          <rect x="172" y="120" width="232" height="92" rx="12" fill="#ffffff" stroke="#e2e8f0" />
+          <rect x="420" y="120" width="244" height="92" rx="12" fill="#ffffff" stroke="#e2e8f0" />
+          <rect x="172" y="226" width="492" height="96" rx="12" fill="#ffffff" stroke="#e2e8f0" />
+          <rect x="172" y="334" width="492" height="46" rx="12" fill="#f8fafc" stroke="#e2e8f0" />
+          {cs.map((_, i) => (
+            <g key={i}>
+              <circle cx={dots[i].x} cy={dots[i].y} r="11" fill="#047857" stroke="#fff" strokeWidth="2" />
+              <text x={dots[i].x} y={dots[i].y + 4} textAnchor="middle" fontSize="12" fontWeight="700" fill="#ffffff">{i + 1}</text>
+            </g>
+          ))}
+        </svg>
+        <ol className="space-y-1.5 text-[13px] leading-snug text-slate-600">
+          {cs.map((c, i) => (
+            <li key={i} className="flex gap-2">
+              <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand-600 text-[11px] font-bold text-white">{i + 1}</span>
+              {c}
+            </li>
+          ))}
+        </ol>
+      </div>
+      <p className="mt-3 text-[11px] italic text-slate-400">Schéma indicatif de l'écran réel (les libellés et la disposition exacts peuvent varier).</p>
+    </figure>
   );
 }
