@@ -28,13 +28,13 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "no-print hidden shrink-0 flex-col border-r border-slate-100 bg-card lg:flex",
+        "no-print hidden shrink-0 flex-col border-r border-black/10 bg-[#579C70] lg:flex",
         collapsed ? "w-[4.75rem]" : "w-72",
         mounted && "transition-[width] duration-300"
       )}
     >
       <div className={cn("flex h-16 items-center", collapsed ? "justify-center px-2" : "justify-between pl-6 pr-3")}>
-        {!collapsed && <Brand />}
+        {!collapsed && <Brand framed />}
         <button
           type="button"
           onClick={toggle}

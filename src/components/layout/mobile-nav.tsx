@@ -51,9 +51,9 @@ export function MobileNav() {
               onClick={() => setOpen(false)}
             />
             {/* Tiroir */}
-            <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[82%] flex-col border-r border-slate-100 bg-card shadow-2xl animate-slide-in-left">
+            <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[82%] flex-col border-r border-black/10 bg-[#579C70] shadow-2xl animate-slide-in-left">
               <div className="flex h-16 items-center justify-between px-5">
-                <Brand />
+                <Brand framed />
                 <button
                   type="button"
                   onClick={() => setOpen(false)}

@@ -32,10 +32,10 @@ function NavItemLink({ item, pathname, collapsed, onNavigate }: { item: NavItem;
         className={cn(
           "group flex items-center rounded-2xl text-sm font-semibold transition-all",
           collapsed ? "mx-auto size-11 justify-center" : "gap-3 px-3 py-2.5",
-          active ? "bg-brand-50 text-brand-800 shadow-sm" : "text-slate-600 hover:bg-slate-50 hover:text-ink",
+          active ? "bg-white text-brand-900 shadow-sm" : "text-institutional-900 hover:bg-white/60 hover:text-brand-900",
         )}
       >
-        <Icon className={cn("size-[18px] shrink-0", active ? "text-brand-700" : "text-slate-400 group-hover:text-slate-600")} />
+        <Icon className={cn("size-[18px] shrink-0", active ? "text-brand-700" : "text-brand-800 group-hover:text-brand-900")} />
         {!collapsed && <span className="flex-1">{item.label}</span>}
         {!collapsed && item.badge && (
           <span className="rounded-full bg-institutional-50 px-2 py-0.5 text-[10px] font-bold text-institutional-700">{item.badge}</span>
@@ -80,7 +80,7 @@ export function NavLinks({ onNavigate, collapsed = false }: { onNavigate?: () =>
               aria-expanded={isOpen}
               className={cn(
                 "flex w-full items-center justify-between rounded-2xl px-3 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors",
-                hasActive ? "text-brand-700" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600",
+                hasActive ? "text-black" : "text-slate-900 hover:bg-white/50 hover:text-black",
               )}
             >
               <span>{group.title}</span>
