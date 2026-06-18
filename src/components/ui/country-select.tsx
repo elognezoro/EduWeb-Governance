@@ -32,8 +32,8 @@ export function CountrySelect({
       searchPlaceholder="Rechercher un pays…"
       options={countries.map((c) => ({
         value: c.id,
-        // Libellé homogène : « EduLex CI (Côte d'Ivoire) » ; pays sans déclinaison → nom seul.
-        label: c.namespace ? `${c.namespace} (${c.name})` : c.name,
+        // Seul le nom du pays (avec son drapeau) — sans préfixe « EduLex » ni parenthèses.
+        label: c.name,
         leading: <Flag code={c.code} className="w-5" />,
       }))}
     />
