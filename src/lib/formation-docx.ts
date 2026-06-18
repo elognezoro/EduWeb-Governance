@@ -6,6 +6,7 @@ import {
 } from "docx";
 import { FORMATION } from "./formation-data";
 import { FORMATION_LOGO_B64, FORMATION_LOGO_W, FORMATION_LOGO_H } from "./formation-logo";
+import { SCREEN_SCHEMAS } from "./formation-screens";
 
 const h1 = (t: string) => new Paragraph({ text: t, heading: HeadingLevel.HEADING_1, spacing: { before: 320, after: 140 } });
 const h2 = (t: string) => new Paragraph({ text: t, heading: HeadingLevel.HEADING_2, spacing: { before: 240, after: 100 } });
@@ -82,6 +83,27 @@ export async function buildFormationDocx(): Promise<Buffer> {
     if (idx > 0) c.push(pageBreak());
     c.push(h2(`${m.code} — ${m.titre}`));
     c.push(p(`Public concerné : ${m.publicCible}`, { italic: true }));
+    const sc = SCREEN_SCHEMAS[m.code];
+    if (sc) {
+      c.push(p(`Aperçu de l'écran — ${sc.titre}`, { bold: true }));
+      c.push(new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 120, after: 80, line: 360 },
+        border: {
+          top: { style: BorderStyle.DASHED, size: 6, color: "94A3B8", space: 12 },
+          bottom: { style: BorderStyle.DASHED, size: 6, color: "94A3B8", space: 12 },
+          left: { style: BorderStyle.DASHED, size: 6, color: "94A3B8", space: 12 },
+          right: { style: BorderStyle.DASHED, size: 6, color: "94A3B8", space: 12 },
+        },
+        children: [
+          new TextRun({ break: 1 }),
+          new TextRun({ text: `[ Insérer ici la capture d'écran : ${sc.titre} ]`, italics: true, color: "64748B" }),
+          new TextRun({ break: 1 }),
+        ],
+      }));
+      c.push(p("Éléments à repérer sur cet écran :", { italic: true }));
+      sc.callouts.forEach((co, i) => c.push(p(`${i + 1}. ${co}`, { indent: 360 })));
+    }
     c.push(h3("Objectifs pédagogiques"));
     m.objectifs.forEach((o) => c.push(bullet(o)));
     c.push(h3("Contenu"));

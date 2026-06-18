@@ -3,18 +3,9 @@ import { Monitor } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { FORMATION } from "@/lib/formation-data";
 import { FormationControls } from "./formation-controls";
+import { SCREEN_SCHEMAS } from "@/lib/formation-screens";
 
 export const metadata: Metadata = { title: "Support de formation — EduWeb Governance" };
-
-/** Schémas d'écran annotés (aperçus didactiques) pour les modules clés. */
-const SCREEN_SCHEMAS: Record<string, { titre: string; navIndex: number; callouts: string[] }> = {
-  M2: { titre: "Tableau de bord", navIndex: 1, callouts: ["Filtre Pays / subdivision (barre supérieure)", "Cartes d'indicateurs (KPI)", "Bouton « Nouvelle activité »", "Graphiques et activités récentes"] },
-  M3: { titre: "Organisation & organigramme", navIndex: 0, callouts: ["Ministère / organisation : zone d'accueil (dépôt)", "Filtre Pays pour restreindre le périmètre", "Boutons « + Organisation » / « + Structure »", "Structure : déplacer, éditer, supprimer (super admin)"] },
-  M5: { titre: "Activités", navIndex: 3, callouts: ["Navigation : module Activités", "Recherche et filtres par statut", "Bouton « Nouvelle activité »", "Liste des activités (Brouillon → Consolidé)"] },
-  M6: { titre: "Validation hiérarchique", navIndex: 4, callouts: ["Navigation : module Validation", "Filtre de périmètre", "Bouton « Examiner »", "File des activités à statuer (« · à vous »)"] },
-  M7: { titre: "Autorisations d'absence", navIndex: 2, callouts: ["Navigation : module Absences", "Réglage de la politique (congé, seuil)", "Demander / valider une absence", "Comptabilité par motif + alertes de seuil"] },
-  M9: { titre: "Référentiel EduLex", navIndex: 0, callouts: ["Navigation : module EduLex", "Recherche de textes réglementaires", "Dépôt / import d'un texte", "Niveau de vérification V0 → V4 et confidentialité"] },
-};
 
 const PRINT_CSS = `
 @media print {
