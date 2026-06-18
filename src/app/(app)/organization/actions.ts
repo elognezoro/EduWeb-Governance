@@ -193,15 +193,48 @@ export async function moveStructure(input: MoveStructureInput): Promise<ActionRe
   return { ok: true };
 }
 
+/** Logique partagée de suppression (douce) d'une structure. */
+async function softDeleteStructure(id: string, userId: string): Promise<ActionResult> {
+  const children = await prisma.structure.count({ where: { parentId: id, deletedAt: null } });
+  if (children > 0) return { ok: false, error: "Supprimez ou rattachez d'abord les sous-structures." };
+  await prisma.structure.update({ where: { id }, data: { deletedAt: new Date() } });
+  await writeAudit({ userId, action: "delete", module: "organization", entityType: "Structure", entityId: id });
+  return { ok: true, id };
+}
+
+/** Suppression depuis la fiche structure : redirige vers l'organigramme en cas de succès. */
 export async function deleteStructure(id: string): Promise<ActionResult> {
   const g = await guard();
   if (g.error) return { ok: false, error: g.error };
-
-  const children = await prisma.structure.count({ where: { parentId: id, deletedAt: null } });
-  if (children > 0) return { ok: false, error: "Supprimez ou rattachez d'abord les sous-structures." };
-
-  await prisma.structure.update({ where: { id }, data: { deletedAt: new Date() } });
-  await writeAudit({ userId: g.user!.id, action: "delete", module: "organization", entityType: "Structure", entityId: id });
+  const res = await softDeleteStructure(id, g.user!.id);
+  if (!res.ok) return res;
   revalidatePath("/organization");
   redirect("/organization");
+}
+
+/** Suppression « en place » depuis l'organigramme : renvoie le résultat (le client rafraîchit). */
+export async function deleteStructureInline(id: string): Promise<ActionResult> {
+  const g = await guard();
+  if (g.error) return { ok: false, error: g.error };
+  const res = await softDeleteStructure(id, g.user!.id);
+  if (res.ok) revalidatePath("/organization");
+  return res;
+}
+
+/** Suppression (douce) d'une organisation et, en cascade, de ses structures rattachées. */
+export async function deleteOrganization(id: string): Promise<ActionResult> {
+  const g = await guard();
+  if (g.error) return { ok: false, error: g.error };
+
+  const org = await prisma.organization.findFirst({ where: { id, deletedAt: null }, select: { id: true } });
+  if (!org) return { ok: false, error: "Organisation introuvable." };
+
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.structure.updateMany({ where: { organizationId: id, deletedAt: null }, data: { deletedAt: now } }),
+    prisma.organization.update({ where: { id }, data: { deletedAt: now } }),
+  ]);
+  await writeAudit({ userId: g.user!.id, action: "delete", module: "organization", entityType: "Organization", entityId: id });
+  revalidatePath("/organization");
+  return { ok: true, id };
 }

@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode, type DragEvent } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Network, MapPin, Users, Pencil, Move, X, Landmark, Building2,
-  AlertCircle, Loader2, ArrowDownToLine, GripVertical,
+  AlertCircle, Loader2, ArrowDownToLine, GripVertical, Trash2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +16,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { FileUpload } from "@/components/ui/file-upload";
 import { cn } from "@/lib/utils";
 import { STRUCTURE_TYPE_MAP } from "@/lib/enums";
-import { moveStructure } from "@/app/(app)/organization/actions";
+import { moveStructure, deleteStructureInline, deleteOrganization } from "@/app/(app)/organization/actions";
 
 export interface OrgNode {
   id: string;
@@ -63,6 +64,7 @@ export function OrgChart({
   const [movingId, setMovingId] = useState<string | null>(null); // sélection « au clic »
   const [draggedId, setDraggedId] = useState<string | null>(null); // glisser-déposer
   const [overKey, setOverKey] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ kind: "org" | "structure"; id: string; name: string; count?: number } | null>(null);
 
   // Mise à jour optimiste : on affiche le résultat immédiatement, on réconcilie ensuite.
   const [override, setOverride] = useState<OrgNode[] | null>(null);
@@ -113,6 +115,17 @@ export function OrgChart({
     const opening = movingId !== id;
     setMovingId(opening ? id : null);
     setLive(opening ? `Mode déplacement activé pour ${byId.get(id)?.name ?? ""}. Choisissez une destination.` : "Déplacement annulé.");
+  }
+
+  function runDelete() {
+    if (!confirmDelete || pending) return;
+    const { kind, id } = confirmDelete;
+    setError(null);
+    start(async () => {
+      const res = kind === "org" ? await deleteOrganization(id) : await deleteStructureInline(id);
+      if (!res.ok) { setError(res.error); setConfirmDelete(null); }
+      else { setConfirmDelete(null); router.refresh(); }
+    });
   }
 
   const withMin = nodes.filter((s) => s.ministryId);
@@ -236,6 +249,17 @@ export function OrgChart({
                     <Pencil className="size-4" />
                   </Link>
                 )}
+                {canManage && !movingId && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setConfirmDelete({ kind: "structure", id: n.id, name: n.name }); }}
+                    aria-label={`Supprimer ${n.name}`}
+                    title="Supprimer cette structure"
+                    className="text-slate-400 opacity-0 transition-opacity hover:text-danger-500 group-hover:opacity-100"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                )}
               </div>
               {renderNodes(list, n.id, depth + 1)}
             </li>
@@ -254,6 +278,34 @@ export function OrgChart({
         <div role="alert" className="flex items-center gap-2 rounded-2xl border border-danger-100 bg-red-50 px-4 py-3 text-sm font-medium text-danger-600">
           <AlertCircle className="size-4 shrink-0" /> {error}
         </div>
+      )}
+
+      {confirmDelete && createPortal(
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-ink/50 p-4 backdrop-blur-sm" role="alertdialog" aria-modal="true" aria-label="Confirmer la suppression">
+          <div className="w-full max-w-sm rounded-3xl bg-card p-6 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-red-50 text-danger-500"><Trash2 className="size-5" /></span>
+              <div className="min-w-0">
+                <p className="font-bold text-institutional-900">Supprimer {confirmDelete.kind === "org" ? "l'organisation" : "la structure"} ?</p>
+                <p className="truncate text-sm text-slate-500">{confirmDelete.name}</p>
+              </div>
+            </div>
+            <p className="mt-4 text-sm text-slate-600">
+              {confirmDelete.kind === "org"
+                ? confirmDelete.count
+                  ? `Cette organisation et ses ${confirmDelete.count} structure(s) rattachée(s) seront supprimées.`
+                  : "Cette organisation sera supprimée."
+                : "Cette structure sera supprimée de l'organigramme."}
+            </p>
+            <div className="mt-5 flex gap-2">
+              <Button type="button" onClick={runDelete} disabled={pending} className="flex-1 bg-danger-500 text-white hover:bg-danger-600">
+                {pending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />} Supprimer
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setConfirmDelete(null)} disabled={pending}>Annuler</Button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* Bandeau de déplacement actif (mode clic) */}
@@ -327,6 +379,17 @@ export function OrgChart({
                         <div className="flex items-center gap-2">
                           {org.type && <Badge tone="neutral">{org.type}</Badge>}
                           {canManage && <FileUpload purpose="logo" entityId={org.id} accept="image/*" label="Logo" variant="ghost" />}
+                          {canManage && (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDelete({ kind: "org", id: org.id, name: org.name, count: nodes.filter((s) => s.organizationId === org.id).length })}
+                              aria-label={`Supprimer ${org.name}`}
+                              title="Supprimer cette organisation"
+                              className="flex size-9 items-center justify-center rounded-2xl text-slate-400 transition-colors hover:bg-red-50 hover:text-danger-500"
+                            >
+                              <Trash2 className="size-4" />
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
