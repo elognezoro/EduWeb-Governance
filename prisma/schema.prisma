@@ -108,8 +108,17 @@ model Session {
   userAgent    String?
   expiresAt    DateTime
   createdAt    DateTime @default(now())
+  lastActiveAt DateTime @default(now()) // glissant : sert au délai d'inactivité
 
   @@index([userId])
+}
+
+/// Réglages globaux de la plateforme (ligne unique, id = "singleton").
+model AppSetting {
+  id                       String   @id
+  inactivityTimeoutMinutes Int? // null = désactivé ; sinon délai d'inactivité (min) avant déconnexion auto
+  updatedAt                DateTime @updatedAt
+  updatedById              String?
 }
 
 // Jeton de réinitialisation de mot de passe (usage unique, haché, expirant).

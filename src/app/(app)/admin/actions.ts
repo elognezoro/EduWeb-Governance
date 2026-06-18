@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser, hasPermission, isSuperAdmin } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit";
 import { WF_NAME } from "@/lib/validation-hierarchy";
+import { setInactivityTimeoutMinutes } from "@/lib/app-settings";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -60,5 +61,28 @@ export async function saveValidationHierarchy(roleKeys: string[]): Promise<Actio
   await writeAudit({ userId: g.user!.id, action: "set_hierarchy", module: "admin", metadata: { roleKeys: finalKeys } });
   revalidatePath("/admin");
   revalidatePath("/validation");
+  return { ok: true };
+}
+
+/**
+ * Délai d'inactivité global avant déconnexion automatique de toute session.
+ * Réservé au super administrateur. `minutes` = null désactive la fonction.
+ */
+export async function saveInactivityTimeout(minutes: number | null): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!user || !isSuperAdmin(user)) return { ok: false, error: "Action réservée au super administrateur." };
+
+  let value: number | null = null;
+  if (minutes !== null && minutes !== undefined) {
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 1440) {
+      return { ok: false, error: "Le délai doit être un entier entre 1 et 1440 minutes (24 h)." };
+    }
+    value = minutes;
+  }
+
+  await setInactivityTimeoutMinutes(value, user.id);
+  await writeAudit({ userId: user.id, action: "set_inactivity_timeout", module: "admin", metadata: { minutes: value } });
+  revalidatePath("/", "layout");
+  revalidatePath("/admin");
   return { ok: true };
 }

@@ -1,9 +1,11 @@
 import { requireUser, fullName } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getCountries, getSelectedCountryCode, getSelectedSubdivision, getSubdivisionsForCode } from "@/lib/country";
+import { getInactivityTimeoutMinutes } from "@/lib/app-settings";
 import { AppShell } from "@/components/layout/app-shell";
 import { FloatingToc } from "@/components/layout/floating-toc";
 import { AcademyPromo } from "@/components/layout/academy-promo";
+import { IdleLogout } from "@/components/security/idle-logout";
 import { initials } from "@/lib/utils";
 
 export default async function AppLayout({
@@ -13,11 +15,12 @@ export default async function AppLayout({
 }) {
   const user = await requireUser();
 
-  const [countries, currentCountry, currentSubdivision, unreadCount] = await Promise.all([
+  const [countries, currentCountry, currentSubdivision, unreadCount, idleTimeout] = await Promise.all([
     getCountries(),
     getSelectedCountryCode(),
     getSelectedSubdivision(),
     prisma.notification.count({ where: { userId: user.id, isRead: false } }),
+    getInactivityTimeoutMinutes(),
   ]);
 
   const subdivisions = await getSubdivisionsForCode(currentCountry);
@@ -46,6 +49,7 @@ export default async function AppLayout({
       {children}
       <FloatingToc />
       <AcademyPromo />
+      {idleTimeout && idleTimeout > 0 ? <IdleLogout timeoutMinutes={idleTimeout} /> : null}
     </AppShell>
   );
 }

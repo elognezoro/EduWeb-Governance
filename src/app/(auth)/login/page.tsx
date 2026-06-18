@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ShieldCheck, Scale, GraduationCap } from "lucide-react";
+import { ShieldCheck, Scale, GraduationCap, Clock } from "lucide-react";
 import { Brand } from "@/components/layout/brand";
 import { LoginForm } from "@/components/auth/login-form";
 import { getCurrentUser } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Connexion" };
 
-export default async function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ reason?: string }> }) {
   const user = await getCurrentUser();
   if (user) redirect("/dashboard");
+  const { reason } = await searchParams;
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
@@ -24,6 +25,11 @@ export default async function LoginPage() {
           <p className="mt-2 text-base text-slate-500">
             Connectez-vous pour accéder à votre espace de gouvernance.
           </p>
+          {reason === "inactivity" && (
+            <div className="mt-6 flex items-center gap-2 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
+              <Clock className="size-4 shrink-0" /> Votre session a été fermée pour cause d'inactivité. Reconnectez-vous.
+            </div>
+          )}
           <div className="mt-8">
             <LoginForm />
           </div>

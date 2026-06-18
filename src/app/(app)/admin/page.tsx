@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
-import { Settings, ShieldCheck, Users, Globe2, Scale, Database, GitBranch } from "lucide-react";
+import { Settings, ShieldCheck, Users, Globe2, Scale, Database, GitBranch, Clock } from "lucide-react";
 import { requireUser, roleKeys, hasPermission, isSuperAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getValidationHierarchy } from "@/lib/validation-hierarchy";
+import { getInactivityTimeoutMinutes } from "@/lib/app-settings";
 import { ValidationHierarchyEditor } from "@/components/admin/validation-hierarchy";
+import { InactivityTimeoutForm } from "@/components/admin/inactivity-timeout-form";
 
 export const metadata: Metadata = { title: "Administration" };
 
@@ -14,7 +16,7 @@ export default async function AdminPage() {
   const roles = roleKeys(user);
   const canManage = isSuperAdmin(user) || hasPermission(user, "admin:manage") || hasPermission(user, "organization:manage");
 
-  const [users, countries, roleCount, permCount, texts, govRoles, hierarchy] = await Promise.all([
+  const [users, countries, roleCount, permCount, texts, govRoles, hierarchy, inactivityTimeout] = await Promise.all([
     prisma.user.count(),
     prisma.country.count(),
     prisma.role.count(),
@@ -22,6 +24,7 @@ export default async function AdminPage() {
     prisma.legalText.count(),
     prisma.role.findMany({ where: { scope: "GOVERNANCE" }, orderBy: { name: "asc" }, select: { key: true, name: true } }),
     getValidationHierarchy(),
+    getInactivityTimeoutMinutes(),
   ]);
 
   const stats = [
@@ -68,6 +71,19 @@ export default async function AdminPage() {
           </CardHeader>
           <CardContent>
             <ValidationHierarchyEditor levels={hierarchy} governanceRoles={govRoles} />
+          </CardContent>
+        </Card>
+      )}
+
+      {isSuperAdmin(user) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="size-4 text-brand-700" /> Sécurité des sessions — déconnexion automatique
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <InactivityTimeoutForm current={inactivityTimeout} />
           </CardContent>
         </Card>
       )}
