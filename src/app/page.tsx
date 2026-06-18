@@ -225,7 +225,7 @@ export default function LandingPage() {
         <div className="container flex flex-col items-center justify-between gap-4 py-8 sm:flex-row">
           <Brand href="/" />
           <p className="text-sm text-slate-400">
-            © {new Date().getFullYear()} EduWeb Governance — Prototype de démonstration.
+            © {new Date().getFullYear()} EduWeb Governance.
           </p>
         </div>
       </footer>
