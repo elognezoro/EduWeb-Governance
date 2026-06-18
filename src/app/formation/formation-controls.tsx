@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Printer, ArrowLeft, Info } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Printer, ArrowLeft, FileText } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export function FormationControls() {
   return (
@@ -11,11 +12,15 @@ export function FormationControls() {
         <Link href="/guide" className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-brand-700">
           <ArrowLeft className="size-4" /> Retour aux guides
         </Link>
-        <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-slate-400">
-          <Info className="size-3.5" /> Astuce : activez « En-têtes et pieds de page » dans la boîte d'impression pour la numérotation.
-        </span>
+        <a
+          href="/formation/download"
+          className={cn(buttonVariants({ variant: "outline" }), "ml-auto")}
+          download
+        >
+          <FileText className="size-4" /> Télécharger en Word (.docx)
+        </a>
         <Button type="button" onClick={() => window.print()}>
-          <Printer className="size-4" /> Imprimer / Enregistrer en PDF
+          <Printer className="size-4" /> Imprimer / PDF
         </Button>
       </div>
     </div>

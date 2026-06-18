@@ -38,6 +38,7 @@
     "country-flag-icons": "^1.6.17",
     "country-state-city": "^3.2.1",
     "date-fns": "^4.1.0",
+    "docx": "^9.7.1",
     "i18n-iso-countries": "^7.14.0",
     "lucide-react": "^0.474.0",
     "next": "15.5.19",
