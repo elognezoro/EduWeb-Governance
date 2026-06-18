@@ -89,7 +89,7 @@ export function GeoFilter({
     router.refresh();
   }
 
-  const countryLabel = currentCountry === ALL ? "Tous les pays" : selected?.namespace || selected?.name || "Pays";
+  const countryLabel = currentCountry === ALL ? "Tous les pays" : selected?.name || "Pays";
   const subLabel = currentSubdivision === ALL || !selectedSub ? "Toutes subdivisions" : selectedSub.name;
 
   return (
@@ -111,7 +111,7 @@ export function GeoFilter({
             <div className="max-h-72 overflow-y-auto">
               <Row leading="🌍" label="Tous les pays" selected={currentCountry === ALL} onClick={() => chooseCountry(ALL)} />
               {filteredCountries.map((c) => (
-                <Row key={c.code} leading={<Flag code={c.code} />} label={c.namespace ? `${c.namespace} (${c.name})` : c.name} hint={c.code} selected={c.code === currentCountry} onClick={() => chooseCountry(c.code)} />
+                <Row key={c.code} leading={<Flag code={c.code} />} label={c.name} hint={c.code} selected={c.code === currentCountry} onClick={() => chooseCountry(c.code)} />
               ))}
               {filteredCountries.length === 0 && <p className="px-3 py-5 text-center text-sm text-slate-400">Aucun pays trouvé</p>}
             </div>
@@ -134,7 +134,7 @@ export function GeoFilter({
                 <input autoFocus value={sq} onChange={(e) => setSq(e.target.value)} placeholder="Rechercher une subdivision…" className={searchCls} />
               </div>
               <p className="px-2.5 pb-1 pt-1 text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                Subdivisions · {selected?.namespace || selected?.name} ({subdivisions.length})
+                Subdivisions · {selected?.name} ({subdivisions.length})
               </p>
               <div className="max-h-72 overflow-y-auto">
                 <Row label="Toutes les subdivisions" selected={currentSubdivision === ALL} onClick={() => chooseSub(ALL)} />
