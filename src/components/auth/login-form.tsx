@@ -7,12 +7,6 @@ import { LogIn, Loader2, AlertCircle } from "lucide-react";
 import { Input, Label } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-const DEMO_ACCOUNTS = [
-  { label: "Super Admin", email: "admin@eduweb.ci" },
-  { label: "Agent", email: "agent@eduweb.ci" },
-  { label: "Validateur EduLex", email: "juriste@eduweb.ci" },
-];
-
 export function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -42,11 +36,6 @@ export function LoginForm() {
     } finally {
       setLoading(false);
     }
-  }
-
-  function fillDemo(demoEmail: string) {
-    setEmail(demoEmail);
-    setPassword("password123");
   }
 
   return (
@@ -97,24 +86,6 @@ export function LoginForm() {
         )}
         Se connecter
       </Button>
-
-      <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-        <p className="text-xs font-semibold text-slate-500">
-          Comptes de démonstration (mot de passe&nbsp;: <code className="font-mono">password123</code>)
-        </p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {DEMO_ACCOUNTS.map((a) => (
-            <button
-              key={a.email}
-              type="button"
-              onClick={() => fillDemo(a.email)}
-              className="rounded-xl bg-card px-3 py-1.5 text-xs font-semibold text-brand-700 shadow-sm transition-colors hover:bg-brand-50"
-            >
-              {a.label}
-            </button>
-          ))}
-        </div>
-      </div>
     </form>
   );
 }
