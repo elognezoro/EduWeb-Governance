@@ -43,7 +43,7 @@ export async function generateAdvice(report: ScoreReport, profileLabel: string):
     historiqueScores: report.weeks.map((w) => w.score),
   };
 
-  const system = `Tu es un coach de productivité bienveillant, concret et concis pour l'application EduWeb Gouvernance.
+  const system = `Tu es un coach de productivité bienveillant, concret et concis pour l'application EduWeb Governance.
 À partir des données de productivité d'un utilisateur (profil : ${profileLabel}), tu génères 2 à 3 conseils en français.
 Règles :
 - Chaque conseil tient en une phrase, à l'impératif, directement applicable dès cette semaine.
