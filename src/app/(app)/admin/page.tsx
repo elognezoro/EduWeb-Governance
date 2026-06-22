@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Settings, ShieldCheck, Users, Globe2, Scale, Database, GitBranch, Clock } from "lucide-react";
-import { requireUser, roleKeys, hasPermission, isSuperAdmin } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { requireUser, roleKeys, isSuperAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,8 +14,10 @@ export const metadata: Metadata = { title: "Administration" };
 
 export default async function AdminPage() {
   const user = await requireUser();
+  // Zone Administration réservée au super administrateur (Admin système).
+  if (!isSuperAdmin(user)) redirect("/dashboard");
   const roles = roleKeys(user);
-  const canManage = isSuperAdmin(user) || hasPermission(user, "admin:manage") || hasPermission(user, "organization:manage");
+  const canManage = isSuperAdmin(user);
 
   const [users, countries, roleCount, permCount, texts, govRoles, hierarchy, inactivityTimeout] = await Promise.all([
     prisma.user.count(),

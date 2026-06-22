@@ -2,20 +2,18 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser, hasPermission, isSuperAdmin } from "@/lib/auth";
+import { getCurrentUser, isSuperAdmin } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit";
 import { WF_NAME } from "@/lib/validation-hierarchy";
 import { setInactivityTimeoutMinutes } from "@/lib/app-settings";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
-/** Admin système (super admin) ou administrateur (admin:manage / organization:manage). */
+/** Zone Administration : réservée à l'administrateur système (super administrateur). */
 async function adminGuard() {
   const user = await getCurrentUser();
   if (!user) return { user: null, error: "Non authentifié." as const };
-  const allowed =
-    isSuperAdmin(user) || hasPermission(user, "admin:manage") || hasPermission(user, "organization:manage");
-  if (!allowed) return { user, error: "Réservé à l'administrateur système et aux administrateurs." as const };
+  if (!isSuperAdmin(user)) return { user, error: "Action réservée à l'administrateur système (super administrateur)." as const };
   return { user, error: null };
 }
 
