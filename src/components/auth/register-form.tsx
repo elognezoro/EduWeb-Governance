@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { UserPlus, Loader2, AlertCircle, MailCheck, LogIn } from "lucide-react";
 import { Input, Label } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import { CountrySelect, type CountryOpt } from "@/components/ui/country-select";
 import { registerAccount } from "@/app/(auth)/register/actions";
@@ -100,11 +101,11 @@ export function RegisterForm({ countries, defaultCountryId = "", defaultRef = ""
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="password">Mot de passe</Label>
-          <Input id="password" type="password" autoComplete="new-password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
+          <PasswordInput id="password" autoComplete="new-password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="confirm">Confirmer</Label>
-          <Input id="confirm" type="password" autoComplete="new-password" placeholder="••••••••" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={8} />
+          <PasswordInput id="confirm" autoComplete="new-password" placeholder="••••••••" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={8} />
         </div>
       </div>
 

@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Loader2, AlertCircle, CheckCircle2, KeyRound, LogIn } from "lucide-react";
-import { Input, Label } from "@/components/ui/input";
+import { Label } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import { resetPassword } from "@/app/(auth)/password-actions";
 
@@ -49,11 +50,11 @@ export function ResetForm({ token }: { token: string }) {
       )}
       <div className="space-y-2">
         <Label htmlFor="pw">Nouveau mot de passe <span className="font-normal text-slate-400">(min. 8 caractères)</span></Label>
-        <Input id="pw" type="password" autoComplete="new-password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required />
+        <PasswordInput id="pw" autoComplete="new-password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required />
       </div>
       <div className="space-y-2">
         <Label htmlFor="pw2">Confirmer le mot de passe</Label>
-        <Input id="pw2" type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
+        <PasswordInput id="pw2" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
       </div>
       <Button type="submit" size="lg" className="w-full" disabled={pending}>
         {pending ? <Loader2 className="size-4 animate-spin" /> : <KeyRound className="size-4" />} Réinitialiser le mot de passe

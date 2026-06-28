@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, AlertCircle, Save } from "lucide-react";
 import { Input, Label } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Select } from "@/components/ui/select";
 import { SearchSelect } from "@/components/ui/search-select";
 import { CountrySelect } from "@/components/ui/country-select";
@@ -131,7 +132,7 @@ export function UserForm({
         {!initial && (
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="pw">Mot de passe initial * <span className="font-normal text-slate-400">(min. 8 caractères)</span></Label>
-            <Input id="pw" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
+            <PasswordInput id="pw" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
           </div>
         )}
       </div>

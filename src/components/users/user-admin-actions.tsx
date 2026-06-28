@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Power, KeyRound, Loader2, Check, Trash2 } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import { toggleUserActive, resetUserPassword, deleteUser } from "@/app/(app)/users/actions";
 
@@ -71,7 +71,7 @@ export function UserAdminActions({
 
       <div className="space-y-2 border-t border-slate-100 pt-4">
         <p className="flex items-center gap-1.5 text-sm font-semibold text-ink"><KeyRound className="size-4 text-slate-400" /> Réinitialiser le mot de passe</p>
-        <Input type="password" value={pwd} onChange={(e) => { setPwd(e.target.value); setDone(false); }} placeholder="Nouveau mot de passe (min. 8)" minLength={8} />
+        <PasswordInput value={pwd} onChange={(e) => { setPwd(e.target.value); setDone(false); }} placeholder="Nouveau mot de passe (min. 8)" minLength={8} />
         <Button variant="outline" onClick={reset} disabled={pending || pwd.length < 8} className="w-full">
           {done ? <Check className="size-4 text-brand-600" /> : <KeyRound className="size-4" />}
           {done ? "Mot de passe réinitialisé" : "Réinitialiser"}
