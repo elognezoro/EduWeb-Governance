@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Trophy,
   Sparkles,
+  Award,
 } from "lucide-react";
 import { Brand } from "@/components/layout/brand";
 import { buttonVariants } from "@/components/ui/button";
@@ -59,6 +60,22 @@ export default function LandingPage() {
     <div className="min-h-screen bg-surface">
       <VisitTracker path="/" />
       <AcademyPromo />
+      {/* Bouton d'accès au formulaire CERTEL (test de niveau), à l'image de booking.eduweb.ci */}
+      <a
+        href="https://booking.eduweb.ci/certel/diagnostic"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Test de niveau CERTEL gratuit — ouvre le formulaire de diagnostic"
+        className="fixed bottom-4 right-4 z-40 flex items-center gap-3 rounded-3xl bg-gradient-to-br from-violet-600 to-violet-700 px-5 py-3.5 text-white shadow-glow ring-1 ring-black/10 transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
+      >
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-white/15">
+          <Award className="size-5" />
+        </span>
+        <span className="leading-tight">
+          <span className="block text-sm font-extrabold">Test de niveau</span>
+          <span className="block text-[12px] text-white/85">CERTEL · gratuit</span>
+        </span>
+      </a>
       {/* Barre de navigation */}
       <header className="sticky top-0 z-30 border-b border-slate-100 bg-card/80 backdrop-blur">
         <div className="container flex h-16 items-center justify-between">
