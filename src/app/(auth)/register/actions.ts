@@ -1,9 +1,13 @@
 "use server";
 
+import { after } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
 import { writeAudit } from "@/lib/audit";
+import { appOrigin } from "@/lib/app-url";
+import { createVerificationToken, consumeVerificationToken } from "@/lib/email-verification";
+import { sendAccountConfirmationEmail, emailConfigured } from "@/lib/email";
 
 export type RegisterResult = { ok: true } | { ok: false; error: string };
 
@@ -23,9 +27,9 @@ const schema = z.object({
 export type RegisterInput = z.infer<typeof schema>;
 
 /**
- * Auto-inscription publique. Le compte est créé **inactif** (en attente de
- * validation par un administrateur) : il ne pourra se connecter qu'après
- * activation. Aucune session n'est ouverte ici.
+ * Auto-inscription publique. Le compte est créé **inactif** puis un e-mail de
+ * confirmation est envoyé : le compte s'active automatiquement dès que
+ * l'utilisateur clique sur le lien. Aucune session n'est ouverte ici.
  */
 export async function registerAccount(input: RegisterInput): Promise<RegisterResult> {
   const parsed = schema.safeParse(input);
@@ -61,7 +65,7 @@ export async function registerAccount(input: RegisterInput): Promise<RegisterRes
       phone: d.phone && d.phone.length > 0 ? d.phone : undefined,
       countryId: country.id,
       referredById,
-      isActive: false, // en attente de validation par un administrateur
+      isActive: false, // activé automatiquement après confirmation de l'e-mail
       roles: role ? { create: [{ roleId: role.id }] } : undefined,
     },
   });
@@ -75,5 +79,53 @@ export async function registerAccount(input: RegisterInput): Promise<RegisterRes
     metadata: { self: true, pending: true, referredById: referredById ?? null },
   });
 
+  // Envoi de l'e-mail de confirmation APRÈS la réponse (fiable en serverless).
+  const origin = await appOrigin();
+  after(async () => {
+    try {
+      const raw = await createVerificationToken(created.id);
+      const link = `${origin}/confirmer-compte?token=${raw}`;
+      const sent = await sendAccountConfirmationEmail(email, link, d.firstName);
+      if (!sent && !emailConfigured()) {
+        console.warn(`[register] e-mail non configuré — lien de confirmation pour ${email} : ${link}`);
+      }
+    } catch (e) {
+      console.error("[register] échec de l'envoi de l'e-mail de confirmation", e);
+    }
+  });
+
+  return { ok: true };
+}
+
+/** Confirme un compte à partir d'un jeton : active le compte (usage unique). */
+export async function confirmAccount(token: string): Promise<{ ok: true; email: string } | { ok: false; error: string }> {
+  if (!token || typeof token !== "string") return { ok: false, error: "Lien invalide." };
+  const user = await consumeVerificationToken(token);
+  if (!user) return { ok: false, error: "Lien de confirmation invalide ou expiré. Demandez un nouvel e-mail de confirmation." };
+  await writeAudit({ userId: user.id, action: "email_verified", module: "user", entityType: "User", entityId: user.id, metadata: { self: true } });
+  return { ok: true, email: user.email };
+}
+
+/** Renvoie un e-mail de confirmation. Réponse TOUJOURS générique (anti-énumération). */
+export async function resendConfirmationEmail(input: { email: string }): Promise<RegisterResult> {
+  const parsed = z.object({ email: z.string().trim().email() }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Adresse e-mail invalide." };
+  const email = parsed.data.email.toLowerCase();
+  const origin = await appOrigin();
+
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true, isActive: true, deletedAt: true, firstName: true } });
+  // On n'envoie que si le compte existe, n'est pas supprimé et n'est PAS déjà actif.
+  if (user && !user.isActive && !user.deletedAt) {
+    const u = user;
+    after(async () => {
+      try {
+        const raw = await createVerificationToken(u.id);
+        const link = `${origin}/confirmer-compte?token=${raw}`;
+        await sendAccountConfirmationEmail(email, link, u.firstName);
+      } catch (e) {
+        console.error("[register] échec renvoi confirmation", e);
+      }
+    });
+  }
   return { ok: true };
 }

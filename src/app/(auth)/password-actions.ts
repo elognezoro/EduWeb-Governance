@@ -2,33 +2,14 @@
 
 import { z } from "zod";
 import { after } from "next/server";
-import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
 import { createResetToken, consumeTokenAndResetPassword } from "@/lib/password-reset";
 import { sendPasswordResetEmail, emailConfigured } from "@/lib/email";
 import { writeAudit } from "@/lib/audit";
+import { appOrigin } from "@/lib/app-url";
 
 export type ResetResult = { ok: true } | { ok: false; error: string };
-
-const CANONICAL_ORIGIN = "https://governance.eduweb.ci";
-
-/**
- * Base URL pour le lien de réinitialisation.
- * - URL de confiance configurée (APP_URL / NEXT_PUBLIC_APP_URL) si présente ;
- * - sinon, en PRODUCTION on n'utilise JAMAIS l'en-tête Host (injection → lien
- *   empoisonné) : on retombe sur l'origine canonique codée en dur ;
- * - hors production seulement, repli sur l'hôte de la requête (dev/preview).
- */
-async function appOrigin(): Promise<string> {
-  const configured = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
-  if (configured) return configured.replace(/\/+$/, "");
-  if (process.env.NODE_ENV === "production") return CANONICAL_ORIGIN;
-  const h = await headers();
-  const host = h.get("host");
-  const proto = h.get("x-forwarded-proto") ?? "http";
-  return host ? `${proto}://${host}` : CANONICAL_ORIGIN;
-}
 
 const emailSchema = z.object({ email: z.string().trim().email("Adresse e-mail invalide.") });
 

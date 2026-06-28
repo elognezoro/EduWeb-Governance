@@ -9,11 +9,11 @@ const SENDER_NAME = "EduWeb Governance";
 
 /**
  * En-tête « From » : le nom d'expéditeur est TOUJOURS « EduWeb Governance ».
- * L'adresse est extraite d'EMAIL_FROM (qu'elle soit fournie seule, « adresse »,
- * ou déjà sous la forme « Nom <adresse> »), sinon une adresse par défaut est utilisée.
+ * L'adresse est extraite de RESEND_FROM (ou EMAIL_FROM) — fournie seule
+ * (« adresse ») ou déjà sous la forme « Nom <adresse> » —, sinon adresse par défaut.
  */
 function senderFrom(): string {
-  const raw = process.env.EMAIL_FROM?.trim();
+  const raw = (process.env.RESEND_FROM || process.env.EMAIL_FROM)?.trim();
   const fallback = "no-reply@governance.eduweb.ci";
   if (!raw) return `${SENDER_NAME} <${fallback}>`;
   const match = raw.match(/<([^>]+)>/);
@@ -71,4 +71,24 @@ export async function sendPasswordResetEmail(to: string, link: string): Promise<
     </div>`;
   const text = `Réinitialisation de votre mot de passe EduWeb Governance.\nOuvrez ce lien (valable 1 h, usage unique) : ${link}\nSi vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail.`;
   return sendEmail({ to, subject: "Réinitialisation de votre mot de passe — EduWeb Governance", html, text });
+}
+
+/** E-mail de confirmation de compte : le clic sur le lien active le compte. */
+export async function sendAccountConfirmationEmail(to: string, link: string, firstName?: string): Promise<boolean> {
+  const hello = firstName ? `Bonjour ${firstName},` : "Bonjour,";
+  const html = `
+    <div style="font-family:system-ui,Segoe UI,Roboto,sans-serif;max-width:480px;margin:auto;color:#1e293b">
+      <h2 style="color:#16653b;margin-bottom:4px">Confirmez votre compte</h2>
+      <p style="color:#64748b;margin-top:0;font-size:13px">EduWeb Governance — plateforme de gouvernance éducative</p>
+      <p>${hello}</p>
+      <p>Merci pour votre inscription. Pour <b>activer votre compte</b>, confirmez votre adresse e-mail en cliquant sur le bouton ci-dessous.</p>
+      <p style="margin:28px 0">
+        <a href="${link}" style="background:#16653b;color:#fff;text-decoration:none;padding:12px 22px;border-radius:12px;font-weight:600">Confirmer mon compte</a>
+      </p>
+      <p style="font-size:13px;color:#64748b">Ce lien est valable <b>24&nbsp;heures</b>. Dès confirmation, votre compte est actif et vous pouvez vous connecter.</p>
+      <p style="font-size:13px;color:#64748b">Si vous n'êtes pas à l'origine de cette inscription, ignorez simplement cet e-mail.</p>
+      <p style="font-size:12px;color:#94a3b8;word-break:break-all">Lien : ${link}</p>
+    </div>`;
+  const text = `${hello}\nMerci pour votre inscription sur EduWeb Governance. Confirmez votre adresse e-mail (lien valable 24 h) pour activer votre compte : ${link}\nSi vous n'êtes pas à l'origine de cette inscription, ignorez cet e-mail.`;
+  return sendEmail({ to, subject: "Confirmez votre compte — EduWeb Governance", html, text });
 }

@@ -46,10 +46,10 @@ export function RegisterForm({ countries, defaultCountryId = "", defaultRef = ""
         <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-brand-100">
           <MailCheck className="size-6 text-brand-700" />
         </span>
-        <h2 className="mt-4 text-lg font-bold text-institutional-900">Compte créé 🎉</h2>
+        <h2 className="mt-4 text-lg font-bold text-institutional-900">Vérifiez votre boîte mail 📬</h2>
         <p className="mt-2 text-sm leading-relaxed text-slate-600">
-          Votre compte est <strong>en attente de validation</strong> par un administrateur.
-          Vous pourrez vous connecter dès qu'il aura été activé.
+          Un e-mail de <strong>confirmation</strong> vient de vous être envoyé. Cliquez sur le lien qu'il contient
+          pour <strong>activer votre compte</strong>, puis connectez-vous. Pensez à vérifier vos courriers indésirables.
         </p>
         <Link
           href="/login"

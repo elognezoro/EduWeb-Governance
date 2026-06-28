@@ -89,6 +89,7 @@ model User {
   absencesRecorded        AbsenceRecord[]          @relation("AbsenceRecorder")
   absencesDecided         AbsenceRecord[]          @relation("AbsenceDecider")
   passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -123,6 +124,19 @@ model AppSetting {
 
 // Jeton de réinitialisation de mot de passe (usage unique, haché, expirant).
 model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique // SHA-256 du jeton (le jeton brut n'est jamais stocké)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// Jeton de confirmation d'adresse e-mail : activer automatiquement le compte au clic.
+model EmailVerificationToken {
   id        String    @id @default(cuid())
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
